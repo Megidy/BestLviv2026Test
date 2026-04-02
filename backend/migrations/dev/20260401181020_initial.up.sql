@@ -62,9 +62,22 @@ CREATE TABLE delivery_requests (
     quantity DOUBLE PRECISION NOT NULL,
     priority request_priority NOT NULL,
     status request_status NOT NULL,
-    estimated_arrival_at TIMESTAMPTZ
+    arrive_till TIMESTAMPTZ
+    
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE delivery_request_items (
+    id BIGSERIAL PRIMARY KEY,
+    request_id BIGINT NOT NULL REFERENCES delivery_requests(id) ON DELETE CASCADE,
+    resource_id BIGINT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+    quantity DOUBLE PRECISION NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+    UNIQUE (request_id, resource_id)
 );
 
 CREATE TABLE allocations (
