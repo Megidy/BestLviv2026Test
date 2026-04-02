@@ -9,4 +9,7 @@ var (
 	ErrInvalidToken            = errors.New("invalid token")
 	ErrUserNotFound            = errors.New("user not found")
 	ErrInvalidPaginationParams = errors.New("invalid pagination params")
+	ErrNotFound                = errors.New("not found")
+	ErrNoSuppliersAvailable    = errors.New("no suppliers available for rebalancing")
+	ErrAlreadyResolved         = errors.New("alert or proposal already resolved")
 )

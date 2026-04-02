@@ -9,4 +9,4 @@ func New() *UseCase {
 	return &UseCase{}
 }
 
-func (u *UseCase) RequestDelivery(ctx context.Context)
+func (u *UseCase) RequestDelivery(ctx context.Context) {}

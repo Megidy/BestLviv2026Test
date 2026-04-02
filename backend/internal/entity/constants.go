@@ -23,3 +23,21 @@ const (
 	OffsetKey string = "offset"
 	UserKey   string = "user"
 )
+
+const (
+	DemandSourceManual    DemandSource = "manual"
+	DemandSourceSensor    DemandSource = "sensor"
+	DemandSourcePredicted DemandSource = "predicted"
+)
+
+const (
+	AlertStatusOpen      AlertStatus = "open"
+	AlertStatusDismissed AlertStatus = "dismissed"
+	AlertStatusResolved  AlertStatus = "resolved"
+)
+
+const (
+	ProposalStatusPending   ProposalStatus = "pending"
+	ProposalStatusApproved  ProposalStatus = "approved"
+	ProposalStatusDismissed ProposalStatus = "dismissed"
+)
