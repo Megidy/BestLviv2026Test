@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS allocations CASCADE;
+DROP TABLE IF EXISTS delivery_requests CASCADE;
+DROP TABLE IF EXISTS inventories CASCADE;
+DROP TABLE IF EXISTS resources CASCADE;
+DROP TABLE IF EXISTS locations CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+DROP TYPE IF EXISTS request_status;
+DROP TYPE IF EXISTS request_priority;
+DROP TYPE IF EXISTS user_role;
+
+DROP FUNCTION IF EXISTS update_timestamp_column();

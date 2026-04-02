@@ -1,0 +1,221 @@
+definitions:
+  dto.GetAllInventoryResponse:
+    properties:
+      inventory_units:
+        items:
+          $ref: '#/definitions/dto.InventoryUnit'
+        type: array
+      total:
+        type: integer
+    type: object
+  dto.InventoryUnit:
+    properties:
+      inventory:
+        $ref: '#/definitions/entity.Inventory'
+      resource:
+        $ref: '#/definitions/entity.Resource'
+    type: object
+  entity.Inventory:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      location_id:
+        type: integer
+      quantity:
+        type: number
+      resource_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  entity.Resource:
+    properties:
+      category:
+        type: string
+      created_at:
+        type: string
+      name:
+        type: string
+      resource:
+        type: integer
+      unit_measure:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  entity.User:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      location_id:
+        type: integer
+      role:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  httprequest.Login:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  httpresponse.Response:
+    properties:
+      data: {}
+      metadata:
+        $ref: '#/definitions/httpresponse.ResponseMetadata'
+    type: object
+  httpresponse.ResponseMetadata:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+      status_code:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: swagger documentation.
+  title: Best Lviv api docs
+  version: "1.0"
+paths:
+  /v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user using username and password, returning a JWT
+        token for further requests.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httprequest.Login'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully authenticated, returns JWT token
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  type: string
+              type: object
+        "400":
+          description: Bad Request - Invalid credentials or validation error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      summary: User login
+      tags:
+      - Auth
+  /v1/auth/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the details of the currently authenticated user using
+        the provided JWT token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved user profile
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.User'
+              type: object
+        "401":
+          description: Unauthorized - Invalid or missing token
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Get current user profile
+      tags:
+      - Auth
+  /v1/inventory/{location_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a paginated list of inventory resources for a specific
+        location. Supports filtering by resource name and category.
+      parameters:
+      - description: Location ID
+        in: path
+        name: location_id
+        required: true
+        type: integer
+      - description: Filter by resource name (partial match)
+        in: query
+        name: resource_name
+        type: string
+      - description: Filter by resource category
+        in: query
+        name: resource_category
+        type: string
+      - description: Number of records to return
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: Number of records to skip
+        in: query
+        name: pageSize
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved inventory units
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/dto.GetAllInventoryResponse'
+              type: object
+        "400":
+          description: Bad Request - Invalid parameters or validation error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Get all inventory units by location
+      tags:
+      - Inventory
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token, "Bearer <token>".
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

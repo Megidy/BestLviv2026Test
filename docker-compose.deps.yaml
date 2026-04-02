@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: best
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d best"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migrations/dev:/migrations
+    command:
+      - -path=/migrations
+      - -database=postgres://postgres:password@postgres:5432/best?sslmode=disable
+      - up
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  postgres_data:
