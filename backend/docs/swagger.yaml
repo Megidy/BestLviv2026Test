@@ -164,6 +164,25 @@ definitions:
       updated_at:
         type: string
     type: object
+  entity.MapPoint:
+    properties:
+      alert_count:
+        type: integer
+      id:
+        type: integer
+      lat:
+        type: number
+      lng:
+        type: number
+      name:
+        type: string
+      status:
+        description: '"normal" | "elevated" | "critical" | "predictive"'
+        type: string
+      type:
+        description: '"warehouse" | "customer"'
+        type: string
+    type: object
   entity.ProposalStatus:
     enum:
     - pending
@@ -379,6 +398,27 @@ info:
   title: Best Lviv api docs
   version: "1.0"
 paths:
+  /map/points:
+    get:
+      description: Returns all warehouses and delivery points with status and coordinates
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.MapPoint'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Get all map points
+      tags:
+      - map
   /v1/ai/run:
     post:
       produces:
