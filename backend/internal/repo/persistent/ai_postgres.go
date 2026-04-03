@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Megidy/BestLviv2026Test/internal/dto"
 	"github.com/Megidy/BestLviv2026Test/internal/entity"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -259,44 +258,6 @@ func (r *AIRepo) GetAlertsByPoint(ctx context.Context, pointID uint) ([]entity.P
 		alerts = append(alerts, a)
 	}
 	return alerts, rows.Err()
-}
-
-func (r *AIRepo) GetOpenAlertsRich(ctx context.Context, limit, offset int) ([]dto.RichAlert, int, error) {
-	rows, err := r.pool.Query(ctx,
-		`SELECT pa.id, pa.point_id, pa.resource_id, pa.predicted_shortfall_at,
-		        pa.confidence, pa.status, pa.proposal_id, pa.created_at, pa.updated_at,
-		        COUNT(*) OVER() AS total,
-		        COALESCE(c.name, 'Unknown') AS point_name,
-		        COALESCE(res.name, 'Unknown') AS resource_name
-		 FROM predictive_alerts pa
-		 LEFT JOIN customers c ON c.id = pa.point_id
-		 LEFT JOIN resources res ON res.id = pa.resource_id
-		 WHERE pa.status = 'open'
-		 ORDER BY pa.confidence DESC, pa.predicted_shortfall_at ASC
-		 LIMIT $1 OFFSET $2`,
-		limit, offset,
-	)
-	if err != nil {
-		return nil, 0, fmt.Errorf("get open alerts rich: %w", err)
-	}
-	defer rows.Close()
-
-	var (
-		alerts []dto.RichAlert
-		total  int
-	)
-	for rows.Next() {
-		var a dto.RichAlert
-		if err := rows.Scan(
-			&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt,
-			&a.Confidence, &a.Status, &a.ProposalID, &a.CreatedAt, &a.UpdatedAt,
-			&total, &a.PointName, &a.ResourceName,
-		); err != nil {
-			return nil, 0, fmt.Errorf("scan rich alert: %w", err)
-		}
-		alerts = append(alerts, a)
-	}
-	return alerts, total, rows.Err()
 }
 
 func (r *AIRepo) UpdateAlertStatus(ctx context.Context, id uint, status entity.AlertStatus, proposalID *uint) error {
