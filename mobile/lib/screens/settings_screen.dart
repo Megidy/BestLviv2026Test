@@ -1,24 +1,31 @@
 import 'package:flutter/material.dart';
 
+import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     super.key,
-    required this.operatorId,
+    required this.profile,
+    required this.swaggerJsonUrl,
+    required this.profileEndpointUrl,
     required this.onBack,
     required this.onLogout,
   });
 
-  final String operatorId;
+  final UserProfile profile;
+  final String swaggerJsonUrl;
+  final String profileEndpointUrl;
   final VoidCallback onBack;
   final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return FillViewportScrollView(
+    final swaggerHost = Uri.tryParse(swaggerJsonUrl)?.host;
+    final profilePath = Uri.tryParse(profileEndpointUrl)?.path ?? profileEndpointUrl;
+    return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,10 +60,10 @@ class SettingsScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: AppColors.mutedGold,
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'JD',
-                      style: TextStyle(
+                      profile.initials,
+                      style: const TextStyle(
                         color: AppColors.creamText,
                         fontWeight: FontWeight.w700,
                       ),
@@ -76,12 +83,12 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        operatorId,
+                        profile.username,
                         style: theme.textTheme.titleLarge,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Warehouse terminal access active',
+                        '${profile.roleLabel} access active',
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
@@ -90,21 +97,116 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
+          Text(
+            'PROFILE SNAPSHOT',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: AppColors.softText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          PanelCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Column(
+              children: [
+                DetailLine(label: 'Username', value: profile.username),
+                DetailLine(label: 'Role', value: profile.roleLabel),
+                DetailLine(label: 'Location', value: profile.locationLabel),
+                DetailLine(
+                  label: 'Location ID',
+                  value: profile.locationId.toString(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'ACCESS',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: AppColors.softText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          PanelCard(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                const _SettingsAccessTile(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Inventory Access',
+                  subtitle: 'Assigned warehouse stock overview available',
+                ),
+                SizedBox(height: 10),
+                const _SettingsAccessTile(
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Alert Monitoring',
+                  subtitle: 'Critical shortage notifications enabled',
+                ),
+                SizedBox(height: 10),
+                _SettingsAccessTile(
+                  icon: Icons.badge_outlined,
+                  title: 'API Source',
+                  subtitle:
+                      'Profile data mapped to $profilePath via ${swaggerHost ?? 'shared swagger config'}',
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
           PrimaryActionButton(
             label: 'Log Out',
             icon: Icons.logout_rounded,
             onPressed: onLogout,
           ),
-          const SizedBox(height: 10),
-          OutlineActionButton(
-            label: 'Back to Terminal',
-            icon: Icons.arrow_back_rounded,
-            onTap: onBack,
-            fillWidth: true,
-          ),
         ],
       ),
+    );
+  }
+}
+
+class _SettingsAccessTile extends StatelessWidget {
+  const _SettingsAccessTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.mutedGold,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.creamText),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

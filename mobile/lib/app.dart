@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'data/app_api_config.dart';
+import 'data/app_repository.dart';
+import 'data/mock_app_repository.dart';
 import 'models.dart';
 import 'screens/alerts_screen.dart';
 import 'screens/demand_screen.dart';
@@ -35,6 +38,8 @@ class TerminalExperience extends StatefulWidget {
 }
 
 class _TerminalExperienceState extends State<TerminalExperience> {
+  static const AppRepository _repository = MockAppRepository();
+
   final TextEditingController _operatorController = TextEditingController(
     text: 'J.DOE_WH04',
   );
@@ -49,6 +54,13 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   UrgencyLevel _selectedUrgency = UrgencyLevel.critical;
   int _requestQuantity = 100;
   int _navIndex = 0;
+
+  late final UserProfile _userProfile = _repository.getCurrentUserProfile();
+  late final InventoryOverview _inventoryOverview =
+      _repository.getInventoryOverview(_userProfile.locationId);
+  late final List<FacilityMapPoint> _mapPoints = _repository.getMapPoints();
+  late final List<PredictiveAlert> _predictiveAlerts =
+      _repository.getPredictiveAlerts();
 
   final ResourceRecord _resource = const ResourceRecord(
     name: 'Lithium Cells B-2',
@@ -158,6 +170,11 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                 onInitialize: () => _goTo(AppScreen.home),
               ),
             AppScreen.alerts => AlertsScreen(
+                alerts: _predictiveAlerts,
+                swaggerJsonUrl: AppApiConfig.swaggerJsonUrl,
+                alertsEndpointUrl: AppApiConfig.resolve(
+                  AppApiConfig.predictiveAlertsPath,
+                ),
                 onBack: () => _goTo(AppScreen.home),
               ),
             AppScreen.home => HomeScreen(
@@ -170,6 +187,11 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                 onNavigate: _handleNavigation,
               ),
             AppScreen.inventory => InventoryScreen(
+                overview: _inventoryOverview,
+                swaggerJsonUrl: AppApiConfig.swaggerJsonUrl,
+                inventoryEndpointUrl: AppApiConfig.resolve(
+                  '${AppApiConfig.inventoryPath}/${_inventoryOverview.locationId}',
+                ),
                 onBack: () => _goTo(AppScreen.home),
               ),
             AppScreen.detail => DetailScreen(
@@ -201,10 +223,19 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                 onManual: () => _goTo(AppScreen.detail),
               ),
             AppScreen.map => MapScreen(
+                points: _mapPoints,
+                swaggerJsonUrl: AppApiConfig.swaggerJsonUrl,
+                mapPointsEndpointUrl: AppApiConfig.resolve(
+                  AppApiConfig.mapPointsPath,
+                ),
                 onBack: () => _goTo(AppScreen.home),
               ),
             AppScreen.settings => SettingsScreen(
-                operatorId: _operatorController.text,
+                profile: _userProfile,
+                swaggerJsonUrl: AppApiConfig.swaggerJsonUrl,
+                profileEndpointUrl: AppApiConfig.resolve(
+                  AppApiConfig.authMePath,
+                ),
                 onBack: () => _goTo(AppScreen.home),
                 onLogout: () => _goTo(AppScreen.login),
               ),
