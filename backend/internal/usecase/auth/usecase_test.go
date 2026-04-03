@@ -30,6 +30,10 @@ func (s *stubUserRepo) GetById(ctx context.Context, id int) (entity.User, error)
 	return s.userByID, nil
 }
 
+func (s *stubUserRepo) Create(ctx context.Context, user entity.User) (int, error) {
+	return 0, nil
+}
+
 func TestLoginAndValidate(t *testing.T) {
 	t.Parallel()
 
@@ -45,8 +49,8 @@ func TestLoginAndValidate(t *testing.T) {
 		Id:           42,
 		Username:     "alice",
 		PasswordHash: hash,
-		Role:         string(entity.UserRoleDispatcher),
-		LocationId:   7,
+		Role:         entity.UserRoleDispatcher,
+		WarehouseId:  7,
 	}
 
 	token, err := uc.Login(context.Background(), "alice", "correct-password")
@@ -68,11 +72,11 @@ func TestLoginAndValidate(t *testing.T) {
 	if claims.Username != "alice" {
 		t.Fatalf("Validate() username = %q, want alice", claims.Username)
 	}
-	if claims.Role != string(entity.UserRoleDispatcher) {
+	if claims.Role != entity.UserRoleDispatcher {
 		t.Fatalf("Validate() role = %q, want %q", claims.Role, entity.UserRoleDispatcher)
 	}
-	if claims.LocationID != 7 {
-		t.Fatalf("Validate() location id = %d, want 7", claims.LocationID)
+	if claims.WarehouseId != 7 {
+		t.Fatalf("Validate() location id = %d, want 7", claims.WarehouseId)
 	}
 	if claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
 		t.Fatal("Validate() returned claims without a future expiration")
@@ -131,7 +135,7 @@ func TestValidateRejectsTamperedToken(t *testing.T) {
 		Id:           42,
 		Username:     "alice",
 		PasswordHash: hash,
-		Role:         string(entity.UserRoleWorker),
+		Role:         entity.UserRoleWorker,
 	}
 
 	token, err := uc.Login(context.Background(), "alice", "correct-password")

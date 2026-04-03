@@ -13,6 +13,6 @@ type AuditEntry struct {
 	EntityID    *uint       `json:"entity_id,omitempty"`
 	BeforeValue *string     `json:"before_value,omitempty"`
 	AfterValue  *string     `json:"after_value,omitempty"`
-	IPAddress   string      `json:"ip_address,omitempty"`
+	IPAddress   *string     `json:"ip_address,omitempty"`
 	CreatedAt   time.Time   `json:"created_at"`
 }

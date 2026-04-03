@@ -22,7 +22,7 @@ func (r *AuditRepo) Insert(ctx context.Context, e entity.AuditEntry) error {
 		`INSERT INTO audit_log (actor_id, actor_role, action, entity_type, entity_id, before_value, after_value, ip_address)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		e.ActorID, e.ActorRole, e.Action, nullStr(e.EntityType), e.EntityID,
-		e.BeforeValue, e.AfterValue, nullStr(e.IPAddress),
+		e.BeforeValue, e.AfterValue, e.IPAddress,
 	)
 	return err
 }

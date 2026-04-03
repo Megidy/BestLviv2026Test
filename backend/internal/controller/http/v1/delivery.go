@@ -55,19 +55,22 @@ func NewDeliveryController(logger *slog.Logger, uc deliveryUseCase) *DeliveryCon
 // @Security     BearerAuth
 // @Router       /v1/delivery-requests [post]
 func (c *DeliveryController) CreateRequest(ctx *echo.Context) error {
+	l := c.logger.With("method", "create_request")
 	actor := ctx.Get(entity.UserKey).(dto.UserClaims)
 
 	var req httprequest.CreateDeliveryRequest
 	if err := ctx.Bind(&req); err != nil {
+		l.Warn("failed to bind request", "error", err)
 		return httpresponse.NewErrorResponse(ctx, entity.ErrBadRequest, err.Error())
 	}
 	if err := ctx.Validate(req); err != nil {
+		l.Warn("failed to validate request", "error", err)
 		return httpresponse.NewErrorResponse(ctx, entity.ErrBadRequest, err.Error())
 	}
 
 	result, err := c.useCase.CreateRequest(ctx.Request().Context(), actor, req)
 	if err != nil {
-		c.logger.Error("create request failed", "error", err)
+		l.Error("create request failed", "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
 	return httpresponse.NewSuccessResponse(ctx, result, http.StatusCreated)
@@ -85,28 +88,30 @@ func (c *DeliveryController) CreateRequest(ctx *echo.Context) error {
 // @Security     BearerAuth
 // @Router       /v1/delivery-requests [get]
 func (c *DeliveryController) GetRequests(ctx *echo.Context) error {
+	l := c.logger.With("method", "create_request")
+
 	actor := ctx.Get(entity.UserKey).(dto.UserClaims)
 
 	var filter dto.DeliveryRequestFilter
 	if err := ctx.Bind(&filter); err != nil {
+		l.Warn("failed to bind request", "error", err)
 		return httpresponse.NewErrorResponse(ctx, entity.ErrBadRequest, err.Error())
 	}
 
 	// WORKERs only see their own requests
-	if actor.Role == string(entity.UserRoleWorker) {
+	if actor.Role == entity.UserRoleWorker {
 		filter.UserID = uint(actor.UserID)
 	}
 
 	limit, _ := ctx.Get(entity.LimitKey).(int)
 	offset, _ := ctx.Get(entity.OffsetKey).(int)
-	if limit == 0 {
-		limit = 20
-	}
+
 	filter.Limit = limit
 	filter.Offset = offset
 
 	requests, total, err := c.useCase.GetRequests(ctx.Request().Context(), filter)
 	if err != nil {
+		l.Error("failed to get requests", "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
 	return httpresponse.NewSuccessResponse(ctx, map[string]any{"requests": requests, "total": total}, http.StatusOK)
@@ -233,7 +238,7 @@ func (c *DeliveryController) UpdateItemQuantity(ctx *echo.Context) error {
 // @Router       /v1/delivery-requests/allocate [post]
 func (c *DeliveryController) AllocatePending(ctx *echo.Context) error {
 	actor := ctx.Get(entity.UserKey).(dto.UserClaims)
-	if actor.Role == string(entity.UserRoleWorker) {
+	if actor.Role == entity.UserRoleWorker {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrForbidden)
 	}
 	count, err := c.useCase.AllocatePending(ctx.Request().Context(), actor)
@@ -253,7 +258,7 @@ func (c *DeliveryController) AllocatePending(ctx *echo.Context) error {
 // @Router       /v1/delivery-requests/{id}/approve-all [post]
 func (c *DeliveryController) ApproveAllAllocations(ctx *echo.Context) error {
 	actor := ctx.Get(entity.UserKey).(dto.UserClaims)
-	if actor.Role == string(entity.UserRoleWorker) {
+	if actor.Role == entity.UserRoleWorker {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrForbidden)
 	}
 	id, err := parseUintParam(ctx, "id")
@@ -274,6 +279,8 @@ func (c *DeliveryController) ApproveAllAllocations(ctx *echo.Context) error {
 // @Produce      json
 // @Param        status     query string false "Filter by status"
 // @Param        request_id query int    false "Filter by request"
+// @Param        page                query     int     true  "Number of records to return"
+// @Param        pageSize            query     int     true  "Number of records to skip"
 // @Success      200  {object}  httpresponse.Response{}
 // @Security     BearerAuth
 // @Router       /v1/allocations [get]
@@ -284,9 +291,7 @@ func (c *DeliveryController) GetAllocations(ctx *echo.Context) error {
 	}
 	limit, _ := ctx.Get(entity.LimitKey).(int)
 	offset, _ := ctx.Get(entity.OffsetKey).(int)
-	if limit == 0 {
-		limit = 20
-	}
+
 	filter.Limit = limit
 	filter.Offset = offset
 
@@ -307,7 +312,7 @@ func (c *DeliveryController) GetAllocations(ctx *echo.Context) error {
 // @Router       /v1/allocations/{id}/approve [post]
 func (c *DeliveryController) ApproveAllocation(ctx *echo.Context) error {
 	actor := ctx.Get(entity.UserKey).(dto.UserClaims)
-	if actor.Role == string(entity.UserRoleWorker) {
+	if actor.Role == entity.UserRoleWorker {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrForbidden)
 	}
 	id, err := parseUintParam(ctx, "id")
@@ -333,7 +338,7 @@ func (c *DeliveryController) ApproveAllocation(ctx *echo.Context) error {
 // @Router       /v1/allocations/{id}/reject [post]
 func (c *DeliveryController) RejectAllocation(ctx *echo.Context) error {
 	actor := ctx.Get(entity.UserKey).(dto.UserClaims)
-	if actor.Role == string(entity.UserRoleWorker) {
+	if actor.Role == entity.UserRoleWorker {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrForbidden)
 	}
 	id, err := parseUintParam(ctx, "id")
@@ -417,12 +422,14 @@ func (c *DeliveryController) FindNearestStock(ctx *echo.Context) error {
 // @Param        actor_id    query int    false "Filter by actor"
 // @Param        action      query string false "Filter by action"
 // @Param        entity_type query string false "Filter by entity type"
+// @Param        page                query     int     true  "Number of records to return"
+// @Param        pageSize            query     int     true  "Number of records to skip"
 // @Success      200  {object}  httpresponse.Response{}
 // @Security     BearerAuth
 // @Router       /v1/audit-log [get]
 func (c *DeliveryController) GetAuditLog(ctx *echo.Context) error {
 	actor := ctx.Get(entity.UserKey).(dto.UserClaims)
-	if actor.Role != string(entity.UserRoleAdmin) {
+	if actor.Role != entity.UserRoleAdmin {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrForbidden)
 	}
 
@@ -432,9 +439,6 @@ func (c *DeliveryController) GetAuditLog(ctx *echo.Context) error {
 	}
 	limit, _ := ctx.Get(entity.LimitKey).(int)
 	offset, _ := ctx.Get(entity.OffsetKey).(int)
-	if limit == 0 {
-		limit = 50
-	}
 	filter.Limit = limit
 	filter.Offset = offset
 

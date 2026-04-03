@@ -15,6 +15,140 @@ definitions:
       resource:
         $ref: '#/definitions/entity.Resource'
     type: object
+  entity.Allocation:
+    properties:
+      created_at:
+        type: string
+      dispatched_at:
+        type: string
+      id:
+        type: integer
+      quantity:
+        type: number
+      request_id:
+        type: integer
+      resource_id:
+        type: integer
+      source_warehouse_id:
+        type: integer
+      status:
+        $ref: '#/definitions/entity.AllocationStatus'
+      updated_at:
+        type: string
+    type: object
+  entity.AllocationStatus:
+    enum:
+    - planned
+    - approved
+    - in_transit
+    - delivered
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - AllocationStatusPlanned
+    - AllocationStatusApproved
+    - AllocationStatusInTransit
+    - AllocationStatusDelivered
+    - AllocationStatusCancelled
+  entity.DeliveryPriority:
+    enum:
+    - normal
+    - elevated
+    - critical
+    - urgent
+    type: string
+    x-enum-varnames:
+    - PriorityNormal
+    - PriorityElevated
+    - PriorityCritical
+    - PriorityUrgent
+  entity.DeliveryRequest:
+    properties:
+      allocations:
+        items:
+          $ref: '#/definitions/entity.Allocation'
+        type: array
+      arrive_till:
+        type: string
+      created_at:
+        type: string
+      destination_id:
+        type: integer
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/entity.DeliveryRequestItem'
+        type: array
+      priority:
+        $ref: '#/definitions/entity.DeliveryPriority'
+      quantity:
+        type: number
+      resource_id:
+        type: integer
+      status:
+        $ref: '#/definitions/entity.DeliveryStatus'
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  entity.DeliveryRequestItem:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      quantity:
+        type: number
+      request_id:
+        type: integer
+      resource_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  entity.DeliveryStatus:
+    enum:
+    - pending
+    - allocated
+    - in_transit
+    - delivered
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusAllocated
+    - StatusInTransit
+    - StatusDelivered
+    - StatusCancelled
+  entity.DemandReading:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      point_id:
+        type: integer
+      quantity:
+        type: number
+      recorded_at:
+        type: string
+      resource_id:
+        type: integer
+      source:
+        $ref: '#/definitions/entity.DemandSource'
+    type: object
+  entity.DemandSource:
+    enum:
+    - manual
+    - sensor
+    - predicted
+    type: string
+    x-enum-varnames:
+    - DemandSourceManual
+    - DemandSourceSensor
+    - DemandSourcePredicted
   entity.Inventory:
     properties:
       created_at:
@@ -30,11 +164,61 @@ definitions:
       updated_at:
         type: string
     type: object
+  entity.ProposalStatus:
+    enum:
+    - pending
+    - approved
+    - dismissed
+    type: string
+    x-enum-varnames:
+    - ProposalStatusPending
+    - ProposalStatusApproved
+    - ProposalStatusDismissed
+  entity.RebalancingProposal:
+    properties:
+      confidence:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: integer
+      resource_id:
+        type: integer
+      status:
+        $ref: '#/definitions/entity.ProposalStatus'
+      target_point_id:
+        type: integer
+      transfers:
+        items:
+          $ref: '#/definitions/entity.RebalancingTransfer'
+        type: array
+      updated_at:
+        type: string
+      urgency:
+        type: string
+    type: object
+  entity.RebalancingTransfer:
+    properties:
+      created_at:
+        type: string
+      estimated_arrival_hours:
+        type: number
+      from_warehouse_id:
+        type: integer
+      id:
+        type: integer
+      proposal_id:
+        type: integer
+      quantity:
+        type: number
+    type: object
   entity.Resource:
     properties:
       category:
         type: string
       created_at:
+        type: string
+      logo_uri:
         type: string
       name:
         type: string
@@ -54,11 +238,74 @@ definitions:
       location_id:
         type: integer
       role:
-        type: string
+        $ref: '#/definitions/entity.UserRole'
       updated_at:
         type: string
       username:
         type: string
+    type: object
+  entity.UserRole:
+    enum:
+    - worker
+    - dispatcher
+    - admin
+    type: string
+    x-enum-varnames:
+    - UserRoleWorker
+    - UserRoleDispatcher
+    - UserRoleAdmin
+  httprequest.CreateDeliveryRequest:
+    properties:
+      arrive_till:
+        type: string
+      destination_id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/httprequest.DeliveryItemRequest'
+        minItems: 1
+        type: array
+      priority:
+        allOf:
+        - $ref: '#/definitions/entity.DeliveryPriority'
+        enum:
+        - normal
+        - elevated
+        - critical
+        - urgent
+    required:
+    - destination_id
+    - items
+    - priority
+    type: object
+  httprequest.CreateUser:
+    properties:
+      required:
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/entity.UserRole'
+        enum:
+        - worker
+        - dispatcher
+      username:
+        type: string
+      warehouse_id:
+        type: integer
+    required:
+    - required
+    - role
+    - username
+    type: object
+  httprequest.DeliveryItemRequest:
+    properties:
+      quantity:
+        type: number
+      resource_id:
+        type: integer
+    required:
+    - quantity
+    - resource_id
     type: object
   httprequest.Login:
     properties:
@@ -66,6 +313,48 @@ definitions:
         type: string
       username:
         type: string
+    required:
+    - password
+    - username
+    type: object
+  httprequest.RecordDemand:
+    properties:
+      point_id:
+        type: integer
+      quantity:
+        type: number
+      recorded_at:
+        type: string
+      resource_id:
+        type: integer
+      source:
+        allOf:
+        - $ref: '#/definitions/entity.DemandSource'
+        enum:
+        - manual
+        - sensor
+        - predicted
+    required:
+    - point_id
+    - quantity
+    - resource_id
+    type: object
+  httprequest.RejectAllocationRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
+  httprequest.UpdateItemQuantityRequest:
+    properties:
+      quantity:
+        type: number
+      resource_id:
+        type: integer
+    required:
+    - quantity
+    - resource_id
     type: object
   httpresponse.Response:
     properties:
@@ -90,6 +379,209 @@ info:
   title: Best Lviv api docs
   version: "1.0"
 paths:
+  /v1/ai/run:
+    post:
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Manually trigger the prediction run (admin)
+      tags:
+      - AI
+  /v1/allocations:
+    get:
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by request
+        in: query
+        name: request_id
+        type: integer
+      - description: Number of records to return
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: Number of records to skip
+        in: query
+        name: pageSize
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: List allocations
+      tags:
+      - Delivery
+  /v1/allocations/{id}/approve:
+    post:
+      parameters:
+      - description: Allocation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.Allocation'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Approve a planned allocation (DISPATCHER)
+      tags:
+      - Delivery
+  /v1/allocations/{id}/dispatch:
+    post:
+      parameters:
+      - description: Allocation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.Allocation'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Mark an allocation as dispatched (WORKER at source warehouse)
+      tags:
+      - Delivery
+  /v1/allocations/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Allocation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/httprequest.RejectAllocationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Reject an allocation (DISPATCHER)
+      tags:
+      - Delivery
+  /v1/audit-log:
+    get:
+      parameters:
+      - description: Filter by actor
+        in: query
+        name: actor_id
+        type: integer
+      - description: Filter by action
+        in: query
+        name: action
+        type: string
+      - description: Filter by entity type
+        in: query
+        name: entity_type
+        type: string
+      - description: Number of records to return
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: Number of records to skip
+        in: query
+        name: pageSize
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Get audit log (ADMIN only)
+      tags:
+      - Admin
+  /v1/auth/create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account in the system. Only users with the Admin
+        role can perform this action.
+      parameters:
+      - description: User details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httprequest.CreateUser'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successfully created new user
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+        "400":
+          description: Bad Request - Invalid input data or validation error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+        "401":
+          description: Unauthorized - Missing or invalid JWT token
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+        "403":
+          description: Forbidden - User does not have Admin privileges
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a new user
+      tags:
+      - Admin
   /v1/auth/login:
     post:
       consumes:
@@ -157,6 +649,284 @@ paths:
       summary: Get current user profile
       tags:
       - Auth
+  /v1/delivery-requests:
+    get:
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by priority
+        in: query
+        name: priority
+        type: string
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: List delivery requests
+      tags:
+      - Delivery
+    post:
+      consumes:
+      - application/json
+      description: WORKER creates a multi-item delivery request. Urgent requests are
+        auto-allocated immediately.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/httprequest.CreateDeliveryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.DeliveryRequest'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a delivery request
+      tags:
+      - Delivery
+  /v1/delivery-requests/{id}:
+    get:
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.DeliveryRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get a delivery request with items and allocations
+      tags:
+      - Delivery
+  /v1/delivery-requests/{id}/approve-all:
+    post:
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Approve all planned allocations for a request (DISPATCHER)
+      tags:
+      - Delivery
+  /v1/delivery-requests/{id}/cancel:
+    post:
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Cancel a delivery request
+      tags:
+      - Delivery
+  /v1/delivery-requests/{id}/deliver:
+    post:
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Confirm delivery of a request
+      tags:
+      - Delivery
+  /v1/delivery-requests/{id}/escalate:
+    post:
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.DeliveryRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Escalate request priority one level up
+      tags:
+      - Delivery
+  /v1/delivery-requests/{id}/items:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/httprequest.UpdateItemQuantityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Update quantity for one item in a pending request
+      tags:
+      - Delivery
+  /v1/delivery-requests/allocate:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Run allocation algorithm on all pending requests (DISPATCHER)
+      tags:
+      - Delivery
+  /v1/demand-readings:
+    post:
+      consumes:
+      - application/json
+      description: Stores a new demand data point for a delivery point + resource
+        pair. Triggers background analysis.
+      parameters:
+      - description: Demand reading
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/httprequest.RecordDemand'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.DemandReading'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Record a demand reading
+      tags:
+      - AI
+  /v1/demand-readings/{point_id}:
+    get:
+      parameters:
+      - description: Customer/delivery point ID
+        in: path
+        name: point_id
+        required: true
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Get demand readings for a delivery point
+      tags:
+      - AI
   /v1/inventory/{location_id}:
     get:
       consumes:
@@ -212,6 +982,168 @@ paths:
       summary: Get all inventory units by location
       tags:
       - Inventory
+  /v1/predictive-alerts:
+    get:
+      parameters:
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: List open predictive alerts
+      tags:
+      - AI
+  /v1/predictive-alerts/{alert_id}/dismiss:
+    post:
+      parameters:
+      - description: Alert ID
+        in: path
+        name: alert_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Dismiss a predictive alert
+      tags:
+      - AI
+  /v1/predictive-alerts/{point_id}:
+    get:
+      parameters:
+      - description: Delivery point ID
+        in: path
+        name: point_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Get all alerts for a delivery point
+      tags:
+      - AI
+  /v1/rebalancing-proposals/{proposal_id}:
+    get:
+      parameters:
+      - description: Proposal ID
+        in: path
+        name: proposal_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.RebalancingProposal'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get a rebalancing proposal with its transfers
+      tags:
+      - AI
+  /v1/rebalancing-proposals/{proposal_id}/approve:
+    post:
+      parameters:
+      - description: Proposal ID
+        in: path
+        name: proposal_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httpresponse.Response'
+            - properties:
+                Data:
+                  $ref: '#/definitions/entity.RebalancingProposal'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Approve a rebalancing proposal (one-tap confirm)
+      tags:
+      - AI
+  /v1/rebalancing-proposals/{proposal_id}/dismiss:
+    post:
+      parameters:
+      - description: Proposal ID
+        in: path
+        name: proposal_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Dismiss a rebalancing proposal
+      tags:
+      - AI
+  /v1/stock/nearest:
+    get:
+      parameters:
+      - description: Resource ID
+        in: query
+        name: resource_id
+        required: true
+        type: integer
+      - description: Destination customer ID
+        in: query
+        name: point_id
+        required: true
+        type: integer
+      - description: Required quantity (optional)
+        in: query
+        name: quantity
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Find nearest warehouses with surplus stock for a resource
+      tags:
+      - Delivery
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token, "Bearer <token>".

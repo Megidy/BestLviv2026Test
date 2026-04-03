@@ -263,7 +263,7 @@ func TestCreateRequestUrgentRequiresArriveTill(t *testing.T) {
 	audit := &stubAuditRepo{}
 	uc := New(repo, audit, testDeliveryLogger())
 
-	_, err := uc.CreateRequest(context.Background(), dto.UserClaims{UserID: 7, Role: string(entity.UserRoleWorker)}, httprequest.CreateDeliveryRequest{
+	_, err := uc.CreateRequest(context.Background(), dto.UserClaims{UserID: 7, Role: entity.UserRoleWorker}, httprequest.CreateDeliveryRequest{
 		DestinationID: 10,
 		Priority:      entity.PriorityUrgent,
 		Items: []httprequest.DeliveryItemRequest{
@@ -288,7 +288,7 @@ func TestCreateRequestUrgentAutoAllocatesInventory(t *testing.T) {
 	uc := New(repo, audit, testDeliveryLogger())
 
 	arriveTill := time.Now().Add(2 * time.Hour)
-	request, err := uc.CreateRequest(context.Background(), dto.UserClaims{UserID: 7, Role: string(entity.UserRoleDispatcher)}, httprequest.CreateDeliveryRequest{
+	request, err := uc.CreateRequest(context.Background(), dto.UserClaims{UserID: 7, Role: entity.UserRoleDispatcher}, httprequest.CreateDeliveryRequest{
 		DestinationID: 10,
 		Priority:      entity.PriorityUrgent,
 		ArriveTill:    &arriveTill,
@@ -352,7 +352,7 @@ func TestCancelRequestAllocatedDispatcherReleasesInventory(t *testing.T) {
 	audit := &stubAuditRepo{}
 	uc := New(repo, audit, testDeliveryLogger())
 
-	err := uc.CancelRequest(context.Background(), dto.UserClaims{UserID: 99, Role: string(entity.UserRoleDispatcher)}, 1)
+	err := uc.CancelRequest(context.Background(), dto.UserClaims{UserID: 99, Role: entity.UserRoleDispatcher}, 1)
 	if err != nil {
 		t.Fatalf("CancelRequest() error = %v", err)
 	}
@@ -389,7 +389,7 @@ func TestUpdateItemQuantityEscalatesPriorityOnLargeIncrease(t *testing.T) {
 	audit := &stubAuditRepo{}
 	uc := New(repo, audit, testDeliveryLogger())
 
-	err := uc.UpdateItemQuantity(context.Background(), dto.UserClaims{UserID: 7, Role: string(entity.UserRoleWorker)}, 1, 5, 16)
+	err := uc.UpdateItemQuantity(context.Background(), dto.UserClaims{UserID: 7, Role: entity.UserRoleWorker}, 1, 5, 16)
 	if err != nil {
 		t.Fatalf("UpdateItemQuantity() error = %v", err)
 	}
@@ -434,7 +434,7 @@ func TestDispatchAllocationMovesRequestToInTransitWhenAllDispatched(t *testing.T
 	audit := &stubAuditRepo{}
 	uc := New(repo, audit, testDeliveryLogger())
 
-	alloc, err := uc.DispatchAllocation(context.Background(), dto.UserClaims{UserID: 99, Role: string(entity.UserRoleDispatcher)}, 1)
+	alloc, err := uc.DispatchAllocation(context.Background(), dto.UserClaims{UserID: 99, Role: entity.UserRoleDispatcher}, 1)
 	if err != nil {
 		t.Fatalf("DispatchAllocation() error = %v", err)
 	}

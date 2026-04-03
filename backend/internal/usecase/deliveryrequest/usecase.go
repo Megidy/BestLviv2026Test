@@ -150,11 +150,11 @@ func (u *UseCase) CancelRequest(ctx context.Context, actor dto.UserClaims, reque
 	}
 
 	// Role check: WORKER can only cancel their own
-	if actor.Role == string(entity.UserRoleWorker) && req.UserID != uint(actor.UserID) {
+	if actor.Role == entity.UserRoleWorker && req.UserID != uint(actor.UserID) {
 		return entity.ErrForbidden
 	}
 	// WORKER can only cancel PENDING; DISPATCHER can cancel PENDING or ALLOCATED
-	if actor.Role == string(entity.UserRoleWorker) && req.Status != entity.StatusPending {
+	if actor.Role == entity.UserRoleWorker && req.Status != entity.StatusPending {
 		return fmt.Errorf("%w: workers can only cancel pending requests", entity.ErrInvalidStatusTransition)
 	}
 	if req.Status == entity.StatusInTransit || req.Status == entity.StatusDelivered || req.Status == entity.StatusCancelled {
@@ -212,7 +212,7 @@ func (u *UseCase) EscalateRequest(ctx context.Context, actor dto.UserClaims, req
 	}
 
 	// WORKER can only escalate their own
-	if actor.Role == string(entity.UserRoleWorker) && req.UserID != uint(actor.UserID) {
+	if actor.Role == entity.UserRoleWorker && req.UserID != uint(actor.UserID) {
 		return entity.DeliveryRequest{}, entity.ErrForbidden
 	}
 
@@ -245,7 +245,7 @@ func (u *UseCase) UpdateItemQuantity(ctx context.Context, actor dto.UserClaims, 
 	if err != nil {
 		return err
 	}
-	if actor.Role == string(entity.UserRoleWorker) && req.UserID != uint(actor.UserID) {
+	if actor.Role == entity.UserRoleWorker && req.UserID != uint(actor.UserID) {
 		return entity.ErrForbidden
 	}
 	if req.Status != entity.StatusPending {
@@ -652,13 +652,13 @@ func (u *UseCase) audit(ctx context.Context, actor dto.UserClaims, action entity
 
 	entry := entity.AuditEntry{
 		ActorID:     actorID,
-		ActorRole:   actor.Role,
+		ActorRole:   string(actor.Role),
 		Action:      action,
 		EntityType:  entityType,
 		EntityID:    eid,
 		BeforeValue: beforeStr,
 		AfterValue:  afterStr,
-		IPAddress:   ip,
+		IPAddress:   nil,
 	}
 
 	if err := u.auditRepo.Insert(ctx, entry); err != nil {

@@ -11,7 +11,10 @@ migrate-up:
 	@migrate -path $(MIGRATIONS_PATH) -database $(DB_URL) up
 
 migrate-down:
-	@migrate -path $(MIGRATIONS_PATH) -database $(DB_URL) down 1
+	@migrate -path $(MIGRATIONS_PATH) -database $(DB_URL) down -all
 
 gen-swag:
 	@swag init -g ./internal/controller/http/router.go
+
+test:
+	@go test ./... 
