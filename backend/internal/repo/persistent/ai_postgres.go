@@ -136,7 +136,7 @@ func (r *AIRepo) GetInventoryByResource(ctx context.Context, resourceID uint) ([
 		if err := rows.Scan(&w.WarehouseID, &w.Quantity, &w.Lat, &w.Lon); err != nil {
 			return nil, fmt.Errorf("scan warehouse inventory: %w", err)
 		}
-		result = append(result, w)
+		result = append(result, w) // Name intentionally empty — not needed by AI module
 	}
 	return result, rows.Err()
 }

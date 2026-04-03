@@ -25,9 +25,10 @@ type RebalancingTransfer struct {
 	CreatedAt             time.Time `json:"created_at"`
 }
 
-// WarehouseInventory is used internally by the AI module for rebalancing calculations.
+// WarehouseInventory is used by the AI and delivery modules.
 type WarehouseInventory struct {
 	WarehouseID uint
+	Name        string
 	Quantity    float64
 	Lat         float64
 	Lon         float64

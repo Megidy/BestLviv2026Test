@@ -29,6 +29,7 @@ type Router struct {
 	authController       *v1.AuthController
 	inventoryController  *v1.InventoryController
 	predictionController *v1.PredictionController
+	deliveryController   *v1.DeliveryController
 
 	validator *httprequest.CustomValidator
 }
@@ -39,6 +40,7 @@ func NewRouter(
 	authController *v1.AuthController,
 	inventoryController *v1.InventoryController,
 	predictionController *v1.PredictionController,
+	deliveryController *v1.DeliveryController,
 	validator *httprequest.CustomValidator,
 ) *Router {
 	return &Router{
@@ -47,6 +49,7 @@ func NewRouter(
 		authController:       authController,
 		inventoryController:  inventoryController,
 		predictionController: predictionController,
+		deliveryController:   deliveryController,
 		validator:            validator,
 	}
 }
@@ -61,17 +64,53 @@ func (r *Router) RegisterRoutes() {
 	withJWT := r.middleware.WithJWT()
 	withPagination := r.middleware.WithPagination()
 
+	// Auth
 	{
 		auth := v1.Group("/auth")
 		auth.POST("/login", r.authController.Login)
 		auth.GET("/me", r.authController.GetMe, withJWT)
 	}
 
+	// Inventory
 	{
 		inventory := v1.Group("/inventory", withJWT)
 		inventory.GET("/:location_id", r.inventoryController.GetAll, withPagination)
 	}
 
+	// Delivery Requests
+	{
+		dr := v1.Group("/delivery-requests", withJWT)
+		dr.POST("", r.deliveryController.CreateRequest)
+		dr.GET("", r.deliveryController.GetRequests, withPagination)
+		dr.POST("/allocate", r.deliveryController.AllocatePending)
+		dr.GET("/:id", r.deliveryController.GetRequestByID)
+		dr.POST("/:id/cancel", r.deliveryController.CancelRequest)
+		dr.POST("/:id/deliver", r.deliveryController.DeliverRequest)
+		dr.POST("/:id/escalate", r.deliveryController.EscalateRequest)
+		dr.PATCH("/:id/items", r.deliveryController.UpdateItemQuantity)
+		dr.POST("/:id/approve-all", r.deliveryController.ApproveAllAllocations)
+	}
+
+	// Allocations
+	{
+		alloc := v1.Group("/allocations", withJWT)
+		alloc.GET("", r.deliveryController.GetAllocations, withPagination)
+		alloc.POST("/:id/approve", r.deliveryController.ApproveAllocation)
+		alloc.POST("/:id/reject", r.deliveryController.RejectAllocation)
+		alloc.POST("/:id/dispatch", r.deliveryController.DispatchAllocation)
+	}
+
+	// Nearest Stock Finder
+	{
+		v1.GET("/stock/nearest", r.deliveryController.FindNearestStock, withJWT)
+	}
+
+	// Audit Log
+	{
+		v1.GET("/audit-log", r.deliveryController.GetAuditLog, withJWT, withPagination)
+	}
+
+	// AI / Prediction
 	{
 		ai := v1.Group("", withJWT)
 

@@ -18,6 +18,7 @@ import (
 	"github.com/Megidy/BestLviv2026Test/internal/dto/httprequest"
 	"github.com/Megidy/BestLviv2026Test/internal/repo/persistent"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/auth"
+	"github.com/Megidy/BestLviv2026Test/internal/usecase/deliveryrequest"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/inventory"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/prediction"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -74,16 +75,20 @@ func newApp(ctx context.Context) (*app, error) {
 	userRepo := persistent.NewUserRepo(pool)
 	inventoryRepo := persistent.NewInventoryRepo(pool)
 	aiRepo := persistent.NewAIRepo(pool)
+	deliveryRepo := persistent.NewDeliveryRepo(pool)
+	auditRepo := persistent.NewAuditRepo(pool)
 
 	// Use cases
 	authUseCase := auth.New(c.JWTSecret, c.JwtDuration, userRepo)
 	inventoryUseCase := inventory.New(inventoryRepo)
 	predictionUseCase := prediction.New(aiRepo, logger)
+	deliveryUseCase := deliveryrequest.New(deliveryRepo, auditRepo, logger)
 
 	// Controllers
 	authController := v1.NewAuthController(logger, authUseCase)
 	inventoryController := v1.NewInventoryController(logger, inventoryUseCase)
 	predictionController := v1.NewPredictionController(logger, predictionUseCase)
+	deliveryController := v1.NewDeliveryController(logger, deliveryUseCase)
 
 	mw := middleware.NewMiddleware(logger, authUseCase)
 	validator, err := httprequest.NewCustomValidator()
@@ -91,7 +96,7 @@ func newApp(ctx context.Context) (*app, error) {
 		return nil, fmt.Errorf("failed to create new custom validator: %w", err)
 	}
 
-	router := httprouter.NewRouter(e, mw, authController, inventoryController, predictionController, validator)
+	router := httprouter.NewRouter(e, mw, authController, inventoryController, predictionController, deliveryController, validator)
 	router.RegisterRoutes()
 
 	appCtx, cancel := context.WithCancel(ctx)
@@ -113,9 +118,7 @@ func (a *app) Run() error {
 	serverErrCh := make(chan error, 1)
 
 	go func() {
-		sc := echo.StartConfig{
-			Address: a.cfg.HttpServerPort,
-		}
+		sc := echo.StartConfig{Address: a.cfg.HttpServerPort}
 		if err := sc.Start(a.ctx, a.router); err != nil {
 			serverErrCh <- err
 		}
