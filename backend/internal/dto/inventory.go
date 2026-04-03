@@ -3,7 +3,7 @@ package dto
 import "github.com/Megidy/BestLviv2026Test/internal/entity"
 
 type GetAllInventoryFilter struct {
-	LocationId       int    `param:"location_id" validate:"required"`
+	LocationId       int    `param:"location_id"`
 	ResourceName     string `query:"resource_name"`
 	ResourceCategory string `query:"resource_category"`
 	Limit            int
