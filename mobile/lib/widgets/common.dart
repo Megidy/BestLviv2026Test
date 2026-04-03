@@ -488,9 +488,9 @@ class TerminalBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = <({IconData icon, String label})>[
       (icon: Icons.home_filled, label: 'Home'),
-      (icon: Icons.inventory_2_outlined, label: 'Resources'),
+      (icon: Icons.inventory_2_outlined, label: 'Inventory'),
       (icon: Icons.qr_code_scanner_rounded, label: 'Scan'),
-      (icon: Icons.notifications_active_outlined, label: 'Alerts'),
+      (icon: Icons.map_outlined, label: 'Map'),
       (icon: Icons.settings_outlined, label: 'Settings'),
     ];
 
@@ -558,23 +558,32 @@ class TerminalBottomBar extends StatelessWidget {
 }
 
 class CircleBadge extends StatelessWidget {
-  const CircleBadge({super.key, required this.label});
+  const CircleBadge({
+    super.key,
+    required this.label,
+    this.onTap,
+  });
 
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.mutedGold,
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelLarge,
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.mutedGold,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
         ),
       ),
     );

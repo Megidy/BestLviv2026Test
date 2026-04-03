@@ -10,6 +10,8 @@ class HomeScreen extends StatelessWidget {
     required this.queue,
     required this.navIndex,
     required this.onQuickScan,
+    required this.onAlertsTap,
+    required this.onAccountTap,
     required this.onQueueTap,
     required this.onNavigate,
   });
@@ -17,6 +19,8 @@ class HomeScreen extends StatelessWidget {
   final List<QueueItem> queue;
   final int navIndex;
   final VoidCallback onQuickScan;
+  final VoidCallback onAlertsTap;
+  final VoidCallback onAccountTap;
   final VoidCallback onQueueTap;
   final ValueChanged<int> onNavigate;
 
@@ -59,7 +63,19 @@ class HomeScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const CircleBadge(label: 'JD'),
+                    Row(
+                      children: [
+                        SmallSquareButton(
+                          icon: Icons.notifications_active_outlined,
+                          onTap: onAlertsTap,
+                        ),
+                        const SizedBox(width: 10),
+                        CircleBadge(
+                          label: 'JD',
+                          onTap: onAccountTap,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),

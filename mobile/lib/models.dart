@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 enum AppScreen {
   login,
   home,
+  alerts,
+  inventory,
   detail,
   demand,
   scanner,
+  map,
+  settings,
 }
 
 enum UrgencyLevel {

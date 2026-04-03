@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'models.dart';
+import 'screens/alerts_screen.dart';
 import 'screens/demand_screen.dart';
 import 'screens/detail_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/inventory_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/map_screen.dart';
 import 'screens/scanner_screen.dart';
+import 'screens/settings_screen.dart';
 import 'theme.dart';
 import 'widgets/common.dart';
 
@@ -114,9 +118,13 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       _currentScreen = screen;
       _navIndex = switch (screen) {
         AppScreen.home => 0,
-        AppScreen.detail => 1,
+        AppScreen.alerts => 0,
+        AppScreen.inventory => 1,
+        AppScreen.detail => 0,
         AppScreen.scanner => 2,
-        AppScreen.demand => 3,
+        AppScreen.map => 3,
+        AppScreen.settings => 4,
+        AppScreen.demand => 0,
         AppScreen.login => 0,
       };
     });
@@ -125,10 +133,11 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   void _handleNavigation(int index) {
     final screen = switch (index) {
       0 => AppScreen.home,
-      1 => AppScreen.detail,
+      1 => AppScreen.inventory,
       2 => AppScreen.scanner,
-      3 => AppScreen.demand,
-      _ => AppScreen.login,
+      3 => AppScreen.map,
+      4 => AppScreen.settings,
+      _ => AppScreen.home,
     };
     _goTo(screen);
   }
@@ -148,12 +157,20 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                 accessKeyController: _accessKeyController,
                 onInitialize: () => _goTo(AppScreen.home),
               ),
+            AppScreen.alerts => AlertsScreen(
+                onBack: () => _goTo(AppScreen.home),
+              ),
             AppScreen.home => HomeScreen(
                 queue: _queue,
                 navIndex: _navIndex,
                 onQuickScan: () => _goTo(AppScreen.scanner),
+                onAlertsTap: () => _goTo(AppScreen.alerts),
+                onAccountTap: () => _goTo(AppScreen.settings),
                 onQueueTap: () => _goTo(AppScreen.detail),
                 onNavigate: _handleNavigation,
+              ),
+            AppScreen.inventory => InventoryScreen(
+                onBack: () => _goTo(AppScreen.home),
               ),
             AppScreen.detail => DetailScreen(
                 resource: _resource,
@@ -182,6 +199,14 @@ class _TerminalExperienceState extends State<TerminalExperience> {
             AppScreen.scanner => ScannerScreen(
                 onClose: () => _goTo(AppScreen.home),
                 onManual: () => _goTo(AppScreen.detail),
+              ),
+            AppScreen.map => MapScreen(
+                onBack: () => _goTo(AppScreen.home),
+              ),
+            AppScreen.settings => SettingsScreen(
+                operatorId: _operatorController.text,
+                onBack: () => _goTo(AppScreen.home),
+                onLogout: () => _goTo(AppScreen.login),
               ),
           },
         ),
