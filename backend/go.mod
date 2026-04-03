@@ -1,6 +1,6 @@
 module github.com/Megidy/BestLviv2026Test
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/caarlos0/env/v11 v11.4.0
