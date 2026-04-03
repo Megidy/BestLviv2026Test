@@ -106,6 +106,28 @@ Full spec: `feats/02_ai_demand_prediction.md`
 
 **Delivery request feature** (`internal/usecase/deliveryrequest/usecase.go`) exists as a stub — no repo, no controller, no routes yet.
 
+## CI/CD
+
+**Pre-commit** (install once: `pip install pre-commit && pre-commit install`):
+- `go fmt`, `go vet`, `golangci-lint` run automatically on staged Go files before every commit.
+
+**GitHub Actions — path-filtered per module:**
+| Workflow | Trigger | Jobs |
+|----------|---------|------|
+| `backend-ci.yml` | PR / non-main push touching `backend/**` | Lint → Build → Test |
+| `backend-cd.yml` | Push to `main` touching `backend/**` | Docker build + push to ghcr.io (`:latest`, `:sha-<short>`) |
+| `frontend-ci.yml` | PR / non-main push touching `frontend/**` | Lint → Build → Test |
+| `mobile-ci.yml` | PR / non-main push touching `mobile/**` | Lint → Build → Test |
+| `release.yml` | Push to `main` | release-please PR; on merge → GitHub Release + semver Docker retag |
+
+**Conventional commits** drive automatic versioning:
+- `feat:` → minor bump, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major.
+- release-please opens a PR that updates `CHANGELOG.md` + `.release-please-manifest.json`.
+- Merging that PR creates the GitHub Release and triggers semver Docker re-tagging.
+
+**Docker image:** `ghcr.io/<owner>/<repo>/backend`
+Tags: `:latest` (every main build), `:sha-<short>` (every main build), `:v1.2.3` (on release).
+
 ## Feature Specs
 
 - `feats/01_offline_pwa_sync.md` — PWA + IndexedDB sync queue (frontend)
