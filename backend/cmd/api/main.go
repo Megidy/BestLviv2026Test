@@ -20,6 +20,7 @@ import (
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/auth"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/deliveryrequest"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/inventory"
+	"github.com/Megidy/BestLviv2026Test/internal/usecase/mapview"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/prediction"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
@@ -77,18 +78,21 @@ func newApp(ctx context.Context) (*app, error) {
 	aiRepo := persistent.NewAIRepo(pool)
 	deliveryRepo := persistent.NewDeliveryRepo(pool)
 	auditRepo := persistent.NewAuditRepo(pool)
+	mapRepo := persistent.NewMapRepo(pool)
 
 	// Use cases
 	authUseCase := auth.New(c.JWTSecret, c.JwtDuration, userRepo)
 	inventoryUseCase := inventory.New(inventoryRepo)
 	predictionUseCase := prediction.New(aiRepo, logger)
 	deliveryUseCase := deliveryrequest.New(deliveryRepo, auditRepo, logger)
+	mapUseCase := mapview.New(mapRepo)
 
 	// Controllers
 	authController := v1.NewAuthController(logger, authUseCase)
 	inventoryController := v1.NewInventoryController(logger, inventoryUseCase)
 	predictionController := v1.NewPredictionController(logger, predictionUseCase)
 	deliveryController := v1.NewDeliveryController(logger, deliveryUseCase)
+	mapController := v1.NewMapController(logger, mapUseCase)
 
 	mw := middleware.NewMiddleware(logger, authUseCase)
 	validator, err := httprequest.NewCustomValidator()
@@ -96,7 +100,7 @@ func newApp(ctx context.Context) (*app, error) {
 		return nil, fmt.Errorf("failed to create new custom validator: %w", err)
 	}
 
-	router := httprouter.NewRouter(e, mw, authController, inventoryController, predictionController, deliveryController, validator)
+	router := httprouter.NewRouter(e, mw, authController, inventoryController, predictionController, deliveryController, mapController, validator)
 	router.RegisterRoutes()
 
 	appCtx, cancel := context.WithCancel(ctx)

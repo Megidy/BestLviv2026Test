@@ -10,6 +10,11 @@ export const navigationItems = [
     description: 'Stock and resources',
   },
   {
+    to: '/map',
+    label: 'Map',
+    description: 'Live geospatial view',
+  },
+  {
     to: '/alerts',
     label: 'Alerts',
     description: 'Open incidents',
