@@ -38,4 +38,3 @@ lerna-debug.log*
 *.sln
 *.sw?
 feats/
-mobile/
