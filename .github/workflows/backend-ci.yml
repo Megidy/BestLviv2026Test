@@ -28,6 +28,12 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      # golangci-lint is built with Go 1.24; pin the go directive so it doesn't
+      # refuse to run against modules that declare go 1.25+ (validator forces this).
+      # The directive only controls language-version gating — no 1.25 syntax is used.
+      - name: Pin go directive for linting
+        run: go mod edit -go=1.24
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
