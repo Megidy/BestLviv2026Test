@@ -30,6 +30,7 @@ type Router struct {
 	inventoryController  *v1.InventoryController
 	predictionController *v1.PredictionController
 	deliveryController   *v1.DeliveryController
+	mapController        *v1.MapController
 
 	validator *httprequest.CustomValidator
 }
@@ -41,6 +42,7 @@ func NewRouter(
 	inventoryController *v1.InventoryController,
 	predictionController *v1.PredictionController,
 	deliveryController *v1.DeliveryController,
+	mapController *v1.MapController,
 	validator *httprequest.CustomValidator,
 ) *Router {
 	return &Router{
@@ -50,6 +52,7 @@ func NewRouter(
 		inventoryController:  inventoryController,
 		predictionController: predictionController,
 		deliveryController:   deliveryController,
+		mapController:        mapController,
 		validator:            validator,
 	}
 }
@@ -108,6 +111,11 @@ func (r *Router) RegisterRoutes() {
 	// Audit Log
 	{
 		v1.GET("/audit-log", r.deliveryController.GetAuditLog, withJWT, withPagination)
+	}
+
+	// Map
+	{
+		v1.GET("/map/points", r.mapController.GetPoints, withJWT)
 	}
 
 	// AI / Prediction

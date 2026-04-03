@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: best
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d best"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migrations/dev:/migrations
+    command:
+      - -path=/migrations
+      - -database=postgres://postgres:password@postgres:5432/best?sslmode=disable
+      - up
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      LOG_LEVEL: info
+      HTTP_SERVER_PORT: :8080
+      ENVIRONMENT: development
+      JWT_SECRET: change-me-in-prod
+      JWT_DURATION: 15m
+      POSTGRES_CONNECTION_URI: postgres://postgres:password@postgres:5432/best?sslmode=disable
+      POSTGRES_MAX_CONNS: 25
+      POSTGRES_MIN_CONNS: 5
+      POSTGRES_MAX_CONN_LIFETIME: 30m
+      POSTGRES_MAX_CONN_IDLE_TIME: 10m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:

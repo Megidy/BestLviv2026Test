@@ -41,6 +41,39 @@
   }
 }
 
+/* Leaflet marker pulse animations */
+@keyframes pulse-fast {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.7);
+    opacity: 0.35;
+  }
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+
+.map-marker--pulse-fast {
+  animation: pulse-fast 0.6s ease-in-out infinite;
+}
+
+.map-marker--pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
 @layer utilities {
   .glass {
     background: rgba(46, 31, 8, 0.6);
