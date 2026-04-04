@@ -12,6 +12,7 @@ type PredictiveAlert struct {
 	Confidence           float64     `json:"confidence"`
 	Status               AlertStatus `json:"status"`
 	ProposalID           *uint       `json:"proposal_id,omitempty"`
+	Rationale            *string     `json:"rationale,omitempty"`
 	CreatedAt            time.Time   `json:"created_at"`
 	UpdatedAt            time.Time   `json:"updated_at"`
 }

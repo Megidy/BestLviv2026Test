@@ -17,6 +17,7 @@ import (
 	"github.com/Megidy/BestLviv2026Test/internal/controller/http/v1/middleware"
 	"github.com/Megidy/BestLviv2026Test/internal/dto/httprequest"
 	"github.com/Megidy/BestLviv2026Test/internal/repo/persistent"
+	"github.com/Megidy/BestLviv2026Test/internal/pkg/groq"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/auth"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/deliveryrequest"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/inventory"
@@ -83,7 +84,12 @@ func newApp(ctx context.Context) (*app, error) {
 	// Use cases
 	authUseCase := auth.New(c.JWTSecret, c.JwtDuration, userRepo)
 	inventoryUseCase := inventory.New(inventoryRepo)
-	predictionUseCase := prediction.New(aiRepo, logger)
+	var groqClient *groq.Client
+	if c.GroqAPIKey != "" {
+		groqClient = groq.New(c.GroqAPIKey, c.GroqModel)
+		logger.Info("Groq LLM rationale generation enabled", "model", c.GroqModel)
+	}
+	predictionUseCase := prediction.New(aiRepo, groqClient, logger)
 	deliveryUseCase := deliveryrequest.New(deliveryRepo, auditRepo, logger)
 	mapUseCase := mapview.New(mapRepo)
 
