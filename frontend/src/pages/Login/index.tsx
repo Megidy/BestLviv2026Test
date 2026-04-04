@@ -43,8 +43,8 @@ export function LoginPage() {
         <Card>
           <CardHeader>
             <div className="mb-3 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 shadow-glow">
-                <span className="text-base font-bold text-primary">L</span>
+              <div className="flex h-9 w-9 items-center justify-center">
+                <img src="/logo.png" alt="Logisync" className="h-9 w-9 object-contain" />
               </div>
               <span className="text-sm font-semibold tracking-wide text-text">
                 Logisync
