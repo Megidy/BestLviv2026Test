@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.2...v0.1.3) (2026-04-04)
+
+
+### Bug Fixes
+
+* remove retag docker package creation ([1c4d885](https://github.com/Megidy/BestLviv2026Test/commit/1c4d8858fb7f15fc82fb622dbc8610bf8f7f2069))
+* remove retag docker package creation ([22ccc89](https://github.com/Megidy/BestLviv2026Test/commit/22ccc897edbd0ebed1f906a8e94c8df449398a68))
+
 ## [0.1.2](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.1...v0.1.2) (2026-04-04)
 
 
