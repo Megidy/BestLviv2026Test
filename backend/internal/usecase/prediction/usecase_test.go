@@ -163,7 +163,7 @@ func TestAnalyzePairCreatesAlertAndProposalForTrendingDemand(t *testing.T) {
 		},
 	}
 
-	uc := New(repo, testPredictionLogger())
+	uc := New(repo, nil, testPredictionLogger())
 	if err := uc.analyzePair(context.Background(), 10, 20); err != nil {
 		t.Fatalf("analyzePair() error = %v", err)
 	}
@@ -213,7 +213,7 @@ func TestDismissAlertAndApproveProposalTransitions(t *testing.T) {
 		repo := &stubAIRepo{
 			alertByID: entity.PredictiveAlert{ID: 11, Status: entity.AlertStatusOpen},
 		}
-		uc := New(repo, testPredictionLogger())
+		uc := New(repo, nil, testPredictionLogger())
 
 		if err := uc.DismissAlert(context.Background(), 11); err != nil {
 			t.Fatalf("DismissAlert() error = %v", err)
@@ -229,7 +229,7 @@ func TestDismissAlertAndApproveProposalTransitions(t *testing.T) {
 		repo := &stubAIRepo{
 			alertByID: entity.PredictiveAlert{ID: 11, Status: entity.AlertStatusDismissed},
 		}
-		uc := New(repo, testPredictionLogger())
+		uc := New(repo, nil, testPredictionLogger())
 
 		err := uc.DismissAlert(context.Background(), 11)
 		if !errors.Is(err, entity.ErrAlreadyResolved) {
@@ -243,7 +243,7 @@ func TestDismissAlertAndApproveProposalTransitions(t *testing.T) {
 		repo := &stubAIRepo{
 			proposalByID: entity.RebalancingProposal{ID: 21, Status: entity.ProposalStatusPending},
 		}
-		uc := New(repo, testPredictionLogger())
+		uc := New(repo, nil, testPredictionLogger())
 
 		proposal, err := uc.ApproveProposal(context.Background(), 21)
 		if err != nil {

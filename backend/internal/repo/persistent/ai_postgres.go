@@ -163,12 +163,24 @@ func (r *AIRepo) GetCustomerCoords(ctx context.Context, customerID uint) (lat, l
 
 // --- Predictive Alerts ---
 
+func (r *AIRepo) GetCustomerName(ctx context.Context, customerID uint) (string, error) {
+	var name string
+	err := r.pool.QueryRow(ctx, `SELECT name FROM customers WHERE id = $1`, customerID).Scan(&name)
+	return name, err
+}
+
+func (r *AIRepo) GetResourceName(ctx context.Context, resourceID uint) (string, error) {
+	var name string
+	err := r.pool.QueryRow(ctx, `SELECT name FROM resources WHERE id = $1`, resourceID).Scan(&name)
+	return name, err
+}
+
 func (r *AIRepo) InsertPredictiveAlert(ctx context.Context, a entity.PredictiveAlert) (entity.PredictiveAlert, error) {
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO predictive_alerts (point_id, resource_id, predicted_shortfall_at, confidence, status)
-		 VALUES ($1, $2, $3, $4, $5)
+		`INSERT INTO predictive_alerts (point_id, resource_id, predicted_shortfall_at, confidence, status, rationale)
+		 VALUES ($1, $2, $3, $4, $5, $6)
 		 RETURNING id, created_at, updated_at`,
-		a.PointID, a.ResourceID, a.PredictedShortfallAt, a.Confidence, a.Status,
+		a.PointID, a.ResourceID, a.PredictedShortfallAt, a.Confidence, a.Status, a.Rationale,
 	).Scan(&a.ID, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return entity.PredictiveAlert{}, fmt.Errorf("insert predictive alert: %w", err)
@@ -179,10 +191,10 @@ func (r *AIRepo) InsertPredictiveAlert(ctx context.Context, a entity.PredictiveA
 func (r *AIRepo) GetAlertByID(ctx context.Context, id uint) (entity.PredictiveAlert, error) {
 	var a entity.PredictiveAlert
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, point_id, resource_id, predicted_shortfall_at, confidence, status, proposal_id, created_at, updated_at
+		`SELECT id, point_id, resource_id, predicted_shortfall_at, confidence, status, proposal_id, rationale, created_at, updated_at
 		 FROM predictive_alerts WHERE id = $1`,
 		id,
-	).Scan(&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt, &a.Confidence, &a.Status, &a.ProposalID, &a.CreatedAt, &a.UpdatedAt)
+	).Scan(&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt, &a.Confidence, &a.Status, &a.ProposalID, &a.Rationale, &a.CreatedAt, &a.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return entity.PredictiveAlert{}, entity.ErrNotFound
 	}
@@ -192,12 +204,12 @@ func (r *AIRepo) GetAlertByID(ctx context.Context, id uint) (entity.PredictiveAl
 func (r *AIRepo) GetOpenAlertByPointAndResource(ctx context.Context, pointID, resourceID uint) (entity.PredictiveAlert, bool, error) {
 	var a entity.PredictiveAlert
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, point_id, resource_id, predicted_shortfall_at, confidence, status, proposal_id, created_at, updated_at
+		`SELECT id, point_id, resource_id, predicted_shortfall_at, confidence, status, proposal_id, rationale, created_at, updated_at
 		 FROM predictive_alerts
 		 WHERE point_id = $1 AND resource_id = $2 AND status = 'open'
 		 LIMIT 1`,
 		pointID, resourceID,
-	).Scan(&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt, &a.Confidence, &a.Status, &a.ProposalID, &a.CreatedAt, &a.UpdatedAt)
+	).Scan(&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt, &a.Confidence, &a.Status, &a.ProposalID, &a.Rationale, &a.CreatedAt, &a.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return entity.PredictiveAlert{}, false, nil
 	}
@@ -209,7 +221,7 @@ func (r *AIRepo) GetOpenAlertByPointAndResource(ctx context.Context, pointID, re
 
 func (r *AIRepo) GetOpenAlerts(ctx context.Context, limit, offset int) ([]entity.PredictiveAlert, int, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, point_id, resource_id, predicted_shortfall_at, confidence, status, proposal_id, created_at, updated_at,
+		`SELECT id, point_id, resource_id, predicted_shortfall_at, confidence, status, proposal_id, rationale, created_at, updated_at,
 		        COUNT(*) OVER() AS total
 		 FROM predictive_alerts
 		 WHERE status = 'open'
@@ -228,7 +240,7 @@ func (r *AIRepo) GetOpenAlerts(ctx context.Context, limit, offset int) ([]entity
 	)
 	for rows.Next() {
 		var a entity.PredictiveAlert
-		if err := rows.Scan(&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt, &a.Confidence, &a.Status, &a.ProposalID, &a.CreatedAt, &a.UpdatedAt, &total); err != nil {
+		if err := rows.Scan(&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt, &a.Confidence, &a.Status, &a.ProposalID, &a.Rationale, &a.CreatedAt, &a.UpdatedAt, &total); err != nil {
 			return nil, 0, fmt.Errorf("scan alert: %w", err)
 		}
 		alerts = append(alerts, a)
@@ -238,7 +250,7 @@ func (r *AIRepo) GetOpenAlerts(ctx context.Context, limit, offset int) ([]entity
 
 func (r *AIRepo) GetAlertsByPoint(ctx context.Context, pointID uint) ([]entity.PredictiveAlert, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, point_id, resource_id, predicted_shortfall_at, confidence, status, proposal_id, created_at, updated_at
+		`SELECT id, point_id, resource_id, predicted_shortfall_at, confidence, status, proposal_id, rationale, created_at, updated_at
 		 FROM predictive_alerts
 		 WHERE point_id = $1
 		 ORDER BY created_at DESC`,
@@ -252,7 +264,7 @@ func (r *AIRepo) GetAlertsByPoint(ctx context.Context, pointID uint) ([]entity.P
 	var alerts []entity.PredictiveAlert
 	for rows.Next() {
 		var a entity.PredictiveAlert
-		if err := rows.Scan(&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt, &a.Confidence, &a.Status, &a.ProposalID, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.PointID, &a.ResourceID, &a.PredictedShortfallAt, &a.Confidence, &a.Status, &a.ProposalID, &a.Rationale, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan alert: %w", err)
 		}
 		alerts = append(alerts, a)

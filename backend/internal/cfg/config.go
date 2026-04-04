@@ -23,6 +23,9 @@ type Api struct {
 	PostgresMaxConnIdleTime time.Duration `env:"POSTGRES_MAX_CONN_IDLE_TIME,required"`
 
 	PredictionInterval time.Duration `env:"PREDICTION_INTERVAL" envDefault:"1h"`
+
+	GroqAPIKey string `env:"GROQ_API_KEY"`
+	GroqModel  string `env:"GROQ_MODEL" envDefault:"llama-3.1-8b-instant"`
 }
 
 func New[Service Api]() (*Service, error) {

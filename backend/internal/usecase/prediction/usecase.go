@@ -18,6 +18,8 @@ type aiRepo interface {
 	GetInventoryByResource(ctx context.Context, resourceID uint) ([]entity.WarehouseInventory, error)
 	GetTotalStockForResource(ctx context.Context, resourceID uint) (float64, error)
 	GetCustomerCoords(ctx context.Context, customerID uint) (lat, lon float64, err error)
+	GetCustomerName(ctx context.Context, customerID uint) (string, error)
+	GetResourceName(ctx context.Context, resourceID uint) (string, error)
 	InsertPredictiveAlert(ctx context.Context, a entity.PredictiveAlert) (entity.PredictiveAlert, error)
 	GetAlertByID(ctx context.Context, id uint) (entity.PredictiveAlert, error)
 	GetOpenAlertByPointAndResource(ctx context.Context, pointID, resourceID uint) (entity.PredictiveAlert, bool, error)
@@ -29,13 +31,19 @@ type aiRepo interface {
 	UpdateProposalStatus(ctx context.Context, id uint, status entity.ProposalStatus) error
 }
 
+// llmClient generates human-readable rationale for alerts. Optional — pass nil to skip.
+type llmClient interface {
+	GenerateRationale(ctx context.Context, prompt string) (string, error)
+}
+
 type UseCase struct {
 	repo   aiRepo
+	llm    llmClient // nil → rationale generation skipped
 	logger *slog.Logger
 }
 
-func New(repo aiRepo, logger *slog.Logger) *UseCase {
-	return &UseCase{repo: repo, logger: logger}
+func New(repo aiRepo, llm llmClient, logger *slog.Logger) *UseCase {
+	return &UseCase{repo: repo, llm: llm, logger: logger}
 }
 
 // StartPredictionLoop runs RunPredictions on the given interval until ctx is cancelled.
@@ -107,6 +115,7 @@ func (u *UseCase) analyzePair(ctx context.Context, pointID, resourceID uint) err
 		PredictedShortfallAt: time.Now().Add(time.Duration(hoursToShortfall * float64(time.Hour))),
 		Confidence:           analysis.Confidence,
 		Status:               entity.AlertStatusOpen,
+		Rationale:            u.generateRationale(ctx, pointID, resourceID, analysis, hoursToShortfall),
 	}
 	alert, err = u.repo.InsertPredictiveAlert(ctx, alert)
 	if err != nil {
@@ -264,6 +273,50 @@ func (u *UseCase) DismissProposal(ctx context.Context, proposalID uint) error {
 		return entity.ErrAlreadyResolved
 	}
 	return u.repo.UpdateProposalStatus(ctx, proposalID, entity.ProposalStatusDismissed)
+}
+
+// generateRationale calls the LLM to produce a 2-sentence human-readable explanation.
+// Returns nil if LLM is not configured or the call fails (best-effort).
+func (u *UseCase) generateRationale(ctx context.Context, pointID, resourceID uint, analysis Analysis, hoursToShortfall float64) *string {
+	if u.llm == nil {
+		return nil
+	}
+
+	customerName, _ := u.repo.GetCustomerName(ctx, pointID)
+	if customerName == "" {
+		customerName = fmt.Sprintf("point #%d", pointID)
+	}
+	resourceName, _ := u.repo.GetResourceName(ctx, resourceID)
+	if resourceName == "" {
+		resourceName = fmt.Sprintf("resource #%d", resourceID)
+	}
+
+	prompt := fmt.Sprintf(
+		`You are a logistics operations AI assistant. Write exactly 2 concise sentences about a predicted shortage alert. Be specific with the numbers provided.
+
+Location: %s
+Resource: %s
+Short-term demand average (last 3 periods): %.1f units
+Long-term demand average (last 14 periods): %.1f units
+Demand increase above baseline: %.0f%%
+Predicted shortfall in: %.0f hours
+Alert confidence: %.0f%%
+
+First sentence: describe what is happening with demand and why it's a concern.
+Second sentence: state the recommended action and urgency. Do not add any extra sentences or formatting.`,
+		customerName, resourceName,
+		analysis.ShortTermAvg, analysis.LongTermAvg,
+		analysis.DivergenceRatio*100,
+		hoursToShortfall,
+		analysis.Confidence*100,
+	)
+
+	rationale, err := u.llm.GenerateRationale(ctx, prompt)
+	if err != nil {
+		u.logger.Warn("rationale generation failed", "point_id", pointID, "resource_id", resourceID, "error", err)
+		return nil
+	}
+	return &rationale
 }
 
 func toDemandPoints(readings []entity.DemandReading) []DemandPoint {
