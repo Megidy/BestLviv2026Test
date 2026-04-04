@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { apiClient } from '@/shared/api';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/shared/ui/Button';
 import {
   Card,
@@ -14,6 +14,7 @@ import { Input } from '@/shared/ui/Input';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login, error: authError } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,14 +25,12 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const resp = await apiClient<{ data: string }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-      });
-      localStorage.setItem('token', resp.data);
+      await login(username, password);
       navigate('/dashboard');
-    } catch {
-      setError('Invalid credentials');
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Invalid credentials',
+      );
     } finally {
       setLoading(false);
     }
@@ -82,8 +81,8 @@ export function LoginPage() {
                   required
                 />
               </div>
-              {error && (
-                <p className="text-sm text-danger">{error}</p>
+              {(error || authError) && (
+                <p className="text-sm text-danger">{error || authError}</p>
               )}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Signing in…' : 'Continue'}
