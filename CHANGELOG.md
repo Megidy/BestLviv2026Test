@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.5...v0.1.6) (2026-04-04)
+
+
+### Bug Fixes
+
+* logger issue with repo ([66c30a1](https://github.com/Megidy/BestLviv2026Test/commit/66c30a1ac621866434567b47dc6f30a89b52f08b))
+
 ## [0.1.5](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.4...v0.1.5) (2026-04-04)
 
 
