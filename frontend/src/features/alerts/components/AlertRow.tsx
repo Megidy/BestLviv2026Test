@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { Map } from 'lucide-react';
 
 import type {
   AlertReasoning,
@@ -77,31 +78,10 @@ export function AlertRow({
             <p className="line-clamp-2 text-sm text-text">
               {alert.reasoning.summary}
             </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="info">{formatPercent(alert.confidence)} confidence</Badge>
-              <span className="text-xs text-text-muted">
-                {expanded ? 'Hide details' : 'View details'}
-              </span>
-            </div>
+            <Badge tone="info">{formatPercent(alert.confidence)} confidence</Badge>
           </div>
         </TableCell>
         <TableCell className="text-text-muted">{alert.status}</TableCell>
-        <TableCell>
-          {alert.proposal_id ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={(event) => {
-                event.stopPropagation();
-                void onToggleExpand(alert);
-              }}
-            >
-              {expanded ? 'Hide' : 'View'}
-            </Button>
-          ) : (
-            <span className="text-sm text-text-muted">None</span>
-          )}
-        </TableCell>
         <TableCell>
           <div
             className="flex justify-end gap-2"
@@ -111,16 +91,18 @@ export function AlertRow({
               <>
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
                   disabled={isMutating}
+                  className="border-success/50 text-success hover:bg-success/10 hover:border-success"
                   onClick={() => onApproveProposal(alert.proposal_id!)}
                 >
                   Approve
                 </Button>
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
                   disabled={isMutating}
+                  className="border-danger/50 text-danger hover:bg-danger/10 hover:border-danger"
                   onClick={() => onDismissProposal(alert.proposal_id!)}
                 >
                   Reject
@@ -131,12 +113,13 @@ export function AlertRow({
               size="sm"
               variant="outline"
               disabled={isMutating}
+              className="border-warning/50 text-warning hover:bg-warning/10 hover:border-warning"
               onClick={() => onDismissAlert(alert.id)}
             >
               Dismiss
             </Button>
-            <Button asChild size="sm" variant="ghost">
-              <Link to="/map">Map</Link>
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/map?focusId=${alert.point_id}&focusType=customer`}><Map size={15} /></Link>
             </Button>
           </div>
         </TableCell>
@@ -144,7 +127,7 @@ export function AlertRow({
 
       {expanded ? (
         <TableRow>
-          <TableCell colSpan={8} className="bg-surface/30">
+          <TableCell colSpan={7} className="bg-surface/30">
             <div className="space-y-4 p-2">
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-border bg-background/60 p-3">

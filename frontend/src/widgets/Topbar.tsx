@@ -1,8 +1,6 @@
 import { useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { Badge } from '@/shared/ui/Badge';
-
 const titleByRoute: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/inventory': 'Inventory',
@@ -35,7 +33,7 @@ export function Topbar() {
               <p className="text-sm font-medium text-text">{user.username}</p>
               <p className="text-xs capitalize text-text-muted">{user.role}</p>
             </div>
-            <Badge tone="info">Location #{user.location_id}</Badge>
+            {/* <Badge tone="info">Location #{user.location_id}</Badge> */}
           </>
         ) : null}
       </div>

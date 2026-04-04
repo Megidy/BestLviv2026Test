@@ -41,16 +41,14 @@ export function LoginPage() {
       <div className="w-full max-w-md animate-slide-up">
         <Card>
           <CardHeader>
-            <div className="mb-3 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center">
-                <img src="/logo.png" alt="Logisync" className="h-9 w-9 object-contain" />
-              </div>
-              <span className="text-sm font-semibold tracking-wide text-text">
+            <div className="mb-4 flex flex-col items-center gap-3">
+              <img src="/logo.png" alt="Logisync" className="h-16 w-16 object-contain" />
+              <span className="text-base font-semibold tracking-wide text-text">
                 Logisync
               </span>
             </div>
-            <CardTitle>Sign in</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-center">Sign in</CardTitle>
+            <CardDescription className="text-center">
               Enter your credentials to access the operations hub.
             </CardDescription>
           </CardHeader>

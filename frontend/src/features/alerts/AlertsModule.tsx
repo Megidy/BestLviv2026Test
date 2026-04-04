@@ -71,26 +71,25 @@ export function AlertsModule() {
                 <TableHead>Shortage ETA</TableHead>
                 <TableHead>Reasoning</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Proposal</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell className="py-10 text-center text-text-muted" colSpan={8}>
+                  <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
                     Loading alerts…
                   </TableCell>
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell className="py-10 text-center text-danger" colSpan={8}>
+                  <TableCell className="py-10 text-center text-danger" colSpan={7}>
                     {error}
                   </TableCell>
                 </TableRow>
               ) : alerts.length === 0 ? (
                 <TableRow>
-                  <TableCell className="py-10 text-center text-text-muted" colSpan={8}>
+                  <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
                     No predictive alerts are currently open.
                   </TableCell>
                 </TableRow>

@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, useMap as useLeafletMap } from 'react-leaflet';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -351,11 +352,10 @@ function SidePanel({
   );
 }
 
-type MapViewProps = {
-  compact?: boolean;
-};
-
-export function MapView({ compact = false }: MapViewProps) {
+export function MapView() {
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get("focusId") ? Number(searchParams.get("focusId")) : null;
+  const focusType = searchParams.get("focusType") ?? null;
   const { user } = useAuth();
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<MapPoint | null>(null);
@@ -398,6 +398,14 @@ export function MapView({ compact = false }: MapViewProps) {
       setSelectedResourceId(resourceOptions[0].id);
     }
   }, [resourceOptions, selectedResourceId]);
+
+  useEffect(() => {
+    if (focusId && points.length > 0 && !selectedPoint) {
+      const target = points.find((p) => p.id === focusId && (focusType ? p.type === focusType : true));
+      if (target) setSelectedPoint(target);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, points]);
 
   const stockByWarehouseId = useMemo(
     () =>
@@ -496,9 +504,10 @@ export function MapView({ compact = false }: MapViewProps) {
 
       <FilterBar active={filter} onChange={setFilter} />
 
-      <div className="absolute left-4 top-16 z-[1000] flex w-[min(28rem,calc(100%-2rem))] flex-wrap gap-2 rounded-xl border border-border bg-background/90 p-3 shadow backdrop-blur">
+      <div className="absolute left-4 top-16 z-[1000] inline-flex flex-wrap gap-2 rounded-xl border border-border bg-background/90 p-3 shadow backdrop-blur">
         <select
-          className="h-10 min-w-[12rem] rounded-xl border border-border bg-surface/80 px-3 text-sm text-text outline-none"
+          className="h-10 min-w-[12rem] appearance-none rounded-xl border border-border bg-surface/80 pl-3 pr-7 text-sm text-text outline-none"
+          style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23D1C1A7\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
           value={selectedResourceId ?? ''}
           onChange={(event) => {
             setSelectedResourceId(
@@ -516,18 +525,13 @@ export function MapView({ compact = false }: MapViewProps) {
         <input
           className="h-10 w-28 rounded-xl border border-border bg-surface/80 px-3 text-sm text-text outline-none"
           min={1}
+          max={1000000}
           step={1}
           type="number"
           value={needed}
-          onChange={(event) => setNeeded(Number(event.target.value) || 0)}
+          onChange={(event) => setNeeded(Math.min(1000000, Math.max(1, Number(event.target.value) || 1)))}
         />
 
-        {!compact ? (
-          <p className="flex items-center text-xs text-text-muted">
-            Click a customer point to evaluate the nearest warehouses with surplus
-            stock after the 20% safety reserve.
-          </p>
-        ) : null}
       </div>
 
       {selectedPoint ? (
