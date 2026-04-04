@@ -7,6 +7,372 @@
         "version": "1.0"
     },
     "paths": {
+        "/map/points": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all warehouses and delivery points with status and coordinates",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Get all map points",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/entity.MapPoint"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ai/run": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Manually trigger the prediction run (admin)",
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/allocations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "List allocations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by request",
+                        "name": "request_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of records to return",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of records to skip",
+                        "name": "pageSize",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/allocations/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Approve a planned allocation (DISPATCHER)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Allocation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpresponse.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "Data": {
+                                            "$ref": "#/definitions/entity.Allocation"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/allocations/{id}/dispatch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Mark an allocation as dispatched (WORKER at source warehouse)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Allocation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpresponse.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "Data": {
+                                            "$ref": "#/definitions/entity.Allocation"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/allocations/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Reject an allocation (DISPATCHER)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Allocation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httprequest.RejectAllocationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/audit-log": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get audit log (ADMIN only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by actor",
+                        "name": "actor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by action",
+                        "name": "action",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by entity type",
+                        "name": "entity_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of records to return",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of records to skip",
+                        "name": "pageSize",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/create": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new user account in the system. Only users with the Admin role can perform this action.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Create a new user",
+                "parameters": [
+                    {
+                        "description": "User details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httprequest.CreateUser"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successfully created new user",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid input data or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Missing or invalid JWT token",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User does not have Admin privileges",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/auth/login": {
             "post": {
                 "description": "Authenticates a user using username and password, returning a JWT token for further requests.",
@@ -117,6 +483,471 @@
                 }
             }
         },
+        "/v1/delivery-requests": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "List delivery requests",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by priority",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "WORKER creates a multi-item delivery request. Urgent requests are auto-allocated immediately.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Create a delivery request",
+                "parameters": [
+                    {
+                        "description": "Request body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httprequest.CreateDeliveryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpresponse.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "Data": {
+                                            "$ref": "#/definitions/entity.DeliveryRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/delivery-requests/allocate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Run allocation algorithm on all pending requests (DISPATCHER)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/delivery-requests/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Get a delivery request with items and allocations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpresponse.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "Data": {
+                                            "$ref": "#/definitions/entity.DeliveryRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/delivery-requests/{id}/approve-all": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Approve all planned allocations for a request (DISPATCHER)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/delivery-requests/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Cancel a delivery request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/delivery-requests/{id}/deliver": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Confirm delivery of a request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/delivery-requests/{id}/escalate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Escalate request priority one level up",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpresponse.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "Data": {
+                                            "$ref": "#/definitions/entity.DeliveryRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/delivery-requests/{id}/items": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Update quantity for one item in a pending request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httprequest.UpdateItemQuantityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/demand-readings": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Stores a new demand data point for a delivery point + resource pair. Triggers background analysis.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Record a demand reading",
+                "parameters": [
+                    {
+                        "description": "Demand reading",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httprequest.RecordDemand"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpresponse.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "Data": {
+                                            "$ref": "#/definitions/entity.DemandReading"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/demand-readings/{point_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Get demand readings for a delivery point",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Customer/delivery point ID",
+                        "name": "point_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/inventory/{location_id}": {
             "get": {
                 "security": [
@@ -203,6 +1034,279 @@
                     }
                 }
             }
+        },
+        "/v1/predictive-alerts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "List open predictive alerts",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/predictive-alerts/{alert_id}/dismiss": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Dismiss a predictive alert",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Alert ID",
+                        "name": "alert_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/predictive-alerts/{point_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Get all alerts for a delivery point",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Delivery point ID",
+                        "name": "point_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/rebalancing-proposals/{proposal_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Get a rebalancing proposal with its transfers",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Proposal ID",
+                        "name": "proposal_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpresponse.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "Data": {
+                                            "$ref": "#/definitions/entity.RebalancingProposal"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/rebalancing-proposals/{proposal_id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Approve a rebalancing proposal (one-tap confirm)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Proposal ID",
+                        "name": "proposal_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httpresponse.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "Data": {
+                                            "$ref": "#/definitions/entity.RebalancingProposal"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/rebalancing-proposals/{proposal_id}/dismiss": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Dismiss a rebalancing proposal",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Proposal ID",
+                        "name": "proposal_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stock/nearest": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Delivery"
+                ],
+                "summary": "Find nearest warehouses with surplus stock for a resource",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Resource ID",
+                        "name": "resource_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Destination customer ID",
+                        "name": "point_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Required quantity (optional)",
+                        "name": "quantity",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -231,6 +1335,196 @@
                 }
             }
         },
+        "entity.Allocation": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "dispatched_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "number"
+                },
+                "request_id": {
+                    "type": "integer"
+                },
+                "resource_id": {
+                    "type": "integer"
+                },
+                "source_warehouse_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/entity.AllocationStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.AllocationStatus": {
+            "type": "string",
+            "enum": [
+                "planned",
+                "approved",
+                "in_transit",
+                "delivered",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "AllocationStatusPlanned",
+                "AllocationStatusApproved",
+                "AllocationStatusInTransit",
+                "AllocationStatusDelivered",
+                "AllocationStatusCancelled"
+            ]
+        },
+        "entity.DeliveryPriority": {
+            "type": "string",
+            "enum": [
+                "normal",
+                "elevated",
+                "critical",
+                "urgent"
+            ],
+            "x-enum-varnames": [
+                "PriorityNormal",
+                "PriorityElevated",
+                "PriorityCritical",
+                "PriorityUrgent"
+            ]
+        },
+        "entity.DeliveryRequest": {
+            "type": "object",
+            "properties": {
+                "allocations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Allocation"
+                    }
+                },
+                "arrive_till": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "destination_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.DeliveryRequestItem"
+                    }
+                },
+                "priority": {
+                    "$ref": "#/definitions/entity.DeliveryPriority"
+                },
+                "quantity": {
+                    "type": "number"
+                },
+                "resource_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/entity.DeliveryStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.DeliveryRequestItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "number"
+                },
+                "request_id": {
+                    "type": "integer"
+                },
+                "resource_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.DeliveryStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "allocated",
+                "in_transit",
+                "delivered",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusAllocated",
+                "StatusInTransit",
+                "StatusDelivered",
+                "StatusCancelled"
+            ]
+        },
+        "entity.DemandReading": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "point_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "number"
+                },
+                "recorded_at": {
+                    "type": "string"
+                },
+                "resource_id": {
+                    "type": "integer"
+                },
+                "source": {
+                    "$ref": "#/definitions/entity.DemandSource"
+                }
+            }
+        },
+        "entity.DemandSource": {
+            "type": "string",
+            "enum": [
+                "manual",
+                "sensor",
+                "predicted"
+            ],
+            "x-enum-varnames": [
+                "DemandSourceManual",
+                "DemandSourceSensor",
+                "DemandSourcePredicted"
+            ]
+        },
         "entity.Inventory": {
             "type": "object",
             "properties": {
@@ -254,6 +1548,105 @@
                 }
             }
         },
+        "entity.MapPoint": {
+            "type": "object",
+            "properties": {
+                "alert_count": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"normal\" | \"elevated\" | \"critical\" | \"predictive\"",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"warehouse\" | \"customer\"",
+                    "type": "string"
+                }
+            }
+        },
+        "entity.ProposalStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "approved",
+                "dismissed"
+            ],
+            "x-enum-varnames": [
+                "ProposalStatusPending",
+                "ProposalStatusApproved",
+                "ProposalStatusDismissed"
+            ]
+        },
+        "entity.RebalancingProposal": {
+            "type": "object",
+            "properties": {
+                "confidence": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "resource_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/entity.ProposalStatus"
+                },
+                "target_point_id": {
+                    "type": "integer"
+                },
+                "transfers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.RebalancingTransfer"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "urgency": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.RebalancingTransfer": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "estimated_arrival_hours": {
+                    "type": "number"
+                },
+                "from_warehouse_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "proposal_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "number"
+                }
+            }
+        },
         "entity.Resource": {
             "type": "object",
             "properties": {
@@ -261,6 +1654,9 @@
                     "type": "string"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "logo_uri": {
                     "type": "string"
                 },
                 "name": {
@@ -290,7 +1686,7 @@
                     "type": "integer"
                 },
                 "role": {
-                    "type": "string"
+                    "$ref": "#/definitions/entity.UserRole"
                 },
                 "updated_at": {
                     "type": "string"
@@ -300,14 +1696,172 @@
                 }
             }
         },
+        "entity.UserRole": {
+            "type": "string",
+            "enum": [
+                "worker",
+                "dispatcher",
+                "admin"
+            ],
+            "x-enum-varnames": [
+                "UserRoleWorker",
+                "UserRoleDispatcher",
+                "UserRoleAdmin"
+            ]
+        },
+        "httprequest.CreateDeliveryRequest": {
+            "type": "object",
+            "required": [
+                "destination_id",
+                "items",
+                "priority"
+            ],
+            "properties": {
+                "arrive_till": {
+                    "type": "string"
+                },
+                "destination_id": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/httprequest.DeliveryItemRequest"
+                    }
+                },
+                "priority": {
+                    "enum": [
+                        "normal",
+                        "elevated",
+                        "critical",
+                        "urgent"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/entity.DeliveryPriority"
+                        }
+                    ]
+                }
+            }
+        },
+        "httprequest.CreateUser": {
+            "type": "object",
+            "required": [
+                "required",
+                "role",
+                "username"
+            ],
+            "properties": {
+                "required": {
+                    "type": "string"
+                },
+                "role": {
+                    "enum": [
+                        "worker",
+                        "dispatcher"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/entity.UserRole"
+                        }
+                    ]
+                },
+                "username": {
+                    "type": "string"
+                },
+                "warehouse_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httprequest.DeliveryItemRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "resource_id"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "number"
+                },
+                "resource_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "httprequest.Login": {
             "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
             "properties": {
                 "password": {
                     "type": "string"
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "httprequest.RecordDemand": {
+            "type": "object",
+            "required": [
+                "point_id",
+                "quantity",
+                "resource_id"
+            ],
+            "properties": {
+                "point_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "number"
+                },
+                "recorded_at": {
+                    "type": "string"
+                },
+                "resource_id": {
+                    "type": "integer"
+                },
+                "source": {
+                    "enum": [
+                        "manual",
+                        "sensor",
+                        "predicted"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/entity.DemandSource"
+                        }
+                    ]
+                }
+            }
+        },
+        "httprequest.RejectAllocationRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "httprequest.UpdateItemQuantityRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "resource_id"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "number"
+                },
+                "resource_id": {
+                    "type": "integer"
                 }
             }
         },

@@ -1,0 +1,35 @@
+repos:
+  # Universal hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Go — only runs when backend files change
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: go fmt
+        language: system
+        entry: bash -c 'cd backend && gofmt -l -w $(git diff --cached --name-only | grep "^backend/.*\.go$" | sed "s|^backend/||")'
+        pass_filenames: false
+        types: [go]
+
+      - id: go-vet
+        name: go vet
+        language: system
+        entry: bash -c 'cd backend && go vet ./...'
+        pass_filenames: false
+        files: ^backend/.*\.go$
+
+      - id: golangci-lint
+        name: golangci-lint
+        language: system
+        entry: bash -c 'cd backend && golangci-lint run --fix ./...'
+        pass_filenames: false
+        files: ^backend/.*\.go$

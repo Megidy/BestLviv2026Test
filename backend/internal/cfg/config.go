@@ -21,6 +21,8 @@ type Api struct {
 	PostgresMinConns        int           `env:"POSTGRES_MIN_CONNS,required"`
 	PostgresMaxConnLifetime time.Duration `env:"POSTGRES_MAX_CONN_LIFETIME,required"`
 	PostgresMaxConnIdleTime time.Duration `env:"POSTGRES_MAX_CONN_IDLE_TIME,required"`
+
+	PredictionInterval time.Duration `env:"PREDICTION_INTERVAL" envDefault:"1h"`
 }
 
 func New[Service Api]() (*Service, error) {

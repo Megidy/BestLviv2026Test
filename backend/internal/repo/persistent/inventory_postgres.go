@@ -20,7 +20,7 @@ func NewInventoryRepo(pool *pgxpool.Pool) *InventoryRepo {
 func (r *InventoryRepo) GetAllWithPagination(ctx context.Context, filter dto.GetAllInventoryFilter) (dto.GetAllInventoryResponse, error) {
 	query := `
 SELECT 
-	i.id, i.location_id, i.resource_id, i.quantity, i.created_at, i.updated_at,
+	i.id, i.warehouse_id, i.resource_id, i.quantity, i.created_at, i.updated_at,
 	r.id, r.name, r.category, r.unit_measure, r.logo_uri, r.created_at, r.updated_at,
 	COUNT(*) OVER() as total_count
 FROM inventories i
@@ -32,6 +32,7 @@ WHERE 1=1
 	argId := 1
 
 	if filter.LocationId > 0 {
+		query += fmt.Sprintf(" AND i.warehouse_id = $%d", argId)
 		args = append(args, filter.LocationId)
 		argId++
 	}

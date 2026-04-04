@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  # release-please reads conventional commits since the last release,
+  # determines the next semver, updates CHANGELOG.md, and opens a PR.
+  # When that PR is merged, it creates the GitHub Release + tag.
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
+  # When release-please merges its PR a GitHub Release is created.
+  # Re-tag the Docker image that was already built by backend-cd.yml
+  # with the clean semver tag.
+  retag-backend:
+    name: Re-tag backend image with semver
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      packages: write
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull latest and push as semver tag
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/backend
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          docker pull $IMAGE:latest
+          docker tag  $IMAGE:latest $IMAGE:$TAG
+          docker push $IMAGE:$TAG

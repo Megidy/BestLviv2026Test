@@ -62,8 +62,8 @@ CREATE TABLE delivery_requests (
     quantity DOUBLE PRECISION NOT NULL,
     priority request_priority NOT NULL,
     status request_status NOT NULL,
-    arrive_till TIMESTAMPTZ
-    
+    arrive_till TIMESTAMPTZ,
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -75,7 +75,7 @@ CREATE TABLE delivery_request_items (
     quantity DOUBLE PRECISION NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     UNIQUE (request_id, resource_id)
 );

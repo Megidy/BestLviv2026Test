@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,7 +18,10 @@ import (
 	"github.com/Megidy/BestLviv2026Test/internal/dto/httprequest"
 	"github.com/Megidy/BestLviv2026Test/internal/repo/persistent"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/auth"
+	"github.com/Megidy/BestLviv2026Test/internal/usecase/deliveryrequest"
 	"github.com/Megidy/BestLviv2026Test/internal/usecase/inventory"
+	"github.com/Megidy/BestLviv2026Test/internal/usecase/mapview"
+	"github.com/Megidy/BestLviv2026Test/internal/usecase/prediction"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
 )
@@ -62,34 +64,49 @@ func newApp(ctx context.Context) (*app, error) {
 	logger := setupLogger(c.LogLevel)
 	slog.SetDefault(logger)
 
-	logger.Info("Successfully connected to the database")
-
 	e := echo.New()
 
 	pool, err := setupPostgresConnPool(ctx, c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create postgres conn pool: %w", err)
 	}
+	logger.Info("successfully connected to the database")
 
+	// Repos
 	userRepo := persistent.NewUserRepo(pool)
 	inventoryRepo := persistent.NewInventoryRepo(pool)
+	aiRepo := persistent.NewAIRepo(pool)
+	deliveryRepo := persistent.NewDeliveryRepo(pool)
+	auditRepo := persistent.NewAuditRepo(pool)
+	mapRepo := persistent.NewMapRepo(pool)
 
+	// Use cases
 	authUseCase := auth.New(c.JWTSecret, c.JwtDuration, userRepo)
 	inventoryUseCase := inventory.New(inventoryRepo)
+	predictionUseCase := prediction.New(aiRepo, logger)
+	deliveryUseCase := deliveryrequest.New(deliveryRepo, auditRepo, logger)
+	mapUseCase := mapview.New(mapRepo)
 
+	// Controllers
 	authController := v1.NewAuthController(logger, authUseCase)
 	inventoryController := v1.NewInventoryController(logger, inventoryUseCase)
+	predictionController := v1.NewPredictionController(logger, predictionUseCase)
+	deliveryController := v1.NewDeliveryController(logger, deliveryUseCase)
+	mapController := v1.NewMapController(logger, mapUseCase)
 
-	middleware := middleware.NewMiddleware(logger, authUseCase)
+	mw := middleware.NewMiddleware(logger, authUseCase)
 	validator, err := httprequest.NewCustomValidator()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new custom validator: %w", err)
 	}
 
-	router := httprouter.NewRouter(e, middleware, authController, inventoryController, validator)
+	router := httprouter.NewRouter(e, mw, authController, inventoryController, predictionController, deliveryController, mapController, validator)
 	router.RegisterRoutes()
 
 	appCtx, cancel := context.WithCancel(ctx)
+
+	// Start background prediction loop
+	go predictionUseCase.StartPredictionLoop(appCtx, c.PredictionInterval)
 
 	return &app{
 		ctx:        appCtx,
@@ -105,10 +122,7 @@ func (a *app) Run() error {
 	serverErrCh := make(chan error, 1)
 
 	go func() {
-		sc := echo.StartConfig{
-			Address: a.cfg.HttpServerPort,
-		}
-
+		sc := echo.StartConfig{Address: a.cfg.HttpServerPort}
 		if err := sc.Start(a.ctx, a.router); err != nil {
 			serverErrCh <- err
 		}
@@ -118,7 +132,6 @@ func (a *app) Run() error {
 	case <-a.ctx.Done():
 		a.logger.Info("OS Interrupt/Termination signal received")
 		return a.Shutdown()
-
 	case err := <-serverErrCh:
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
@@ -129,18 +142,11 @@ func (a *app) Run() error {
 
 func (a *app) Shutdown() error {
 	a.logger.Info("Starting graceful shutdown...")
-
 	a.cancelFunc()
-
-	var shutdownErrs []error
 
 	a.logger.Info("Closing database connection pool...")
 	if a.db != nil {
 		a.db.Close()
-	}
-
-	if len(shutdownErrs) > 0 {
-		return fmt.Errorf("shutdown encountered errors: %v", shutdownErrs)
 	}
 
 	a.logger.Info("Graceful shutdown completed successfully")
@@ -152,11 +158,7 @@ func setupLogger(levelStr string) *slog.Logger {
 	if err := level.UnmarshalText([]byte(levelStr)); err != nil {
 		level = slog.LevelInfo
 	}
-
-	opts := &slog.HandlerOptions{
-		Level: level,
-	}
-	handler := slog.NewJSONHandler(os.Stdout, opts)
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
 	return slog.New(handler)
 }
 
@@ -180,8 +182,7 @@ func setupPostgresConnPool(ctx context.Context, c *cfg.Api) (*pgxpool.Pool, erro
 		return nil, fmt.Errorf("failed to create pool: %w", err)
 	}
 
-	err = pool.Ping(iCtx)
-	if err != nil {
+	if err = pool.Ping(iCtx); err != nil {
 		return nil, fmt.Errorf("failed to ping connection: %w", err)
 	}
 

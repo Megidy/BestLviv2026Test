@@ -16,6 +16,7 @@ import (
 type UserRepo interface {
 	GetByUsername(ctx context.Context, username string) (entity.User, error)
 	GetById(ctx context.Context, id int) (entity.User, error)
+	Create(ctx context.Context, user entity.User) (int, error)
 }
 
 type UseCase struct {
@@ -48,10 +49,10 @@ func (u *UseCase) Login(ctx context.Context, username, password string) (string,
 
 	expirationTime := time.Now().Add(u.jwtDuration)
 	claims := &dto.UserClaims{
-		UserID:     user.Id,
-		Username:   user.Username,
-		Role:       user.Role,
-		LocationID: user.LocationId,
+		UserID:      user.Id,
+		Username:    user.Username,
+		Role:        user.Role,
+		WarehouseId: user.WarehouseId,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -88,6 +89,27 @@ func (u *UseCase) Validate(ctx context.Context, tokenString string) (dto.UserCla
 	}
 
 	return claims, nil
+}
+
+func (u *UseCase) Create(ctx context.Context, username, password string, warehouseId int, role entity.UserRole) error {
+	hashedPassword, err := u.HashPassword(password)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	user := entity.User{
+		Username:     username,
+		PasswordHash: hashedPassword,
+		Role:         role,
+		WarehouseId:  warehouseId,
+	}
+
+	_, err = u.userRepo.Create(ctx, user)
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return nil
 }
 
 func (u *UseCase) GetById(ctx context.Context, id int) (entity.User, error) {
