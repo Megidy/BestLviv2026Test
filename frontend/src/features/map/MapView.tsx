@@ -6,7 +6,8 @@ import { MapContainer, TileLayer, useMap as useLeafletMap } from 'react-leaflet'
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
 import { useMap } from '@/features/map/hooks/useMap';
-import type { MapPoint, MapPointStatus } from '@/shared/api';
+import { useNearestStock } from '@/features/map/useNearestStock';
+import type { MapPoint, MapPointStatus, NearestStockResult } from '@/shared/api';
 import { formatNumber, mapStatusTone } from '@/shared/lib/formatters';
 import { Badge } from '@/shared/ui/Badge';
 
@@ -22,11 +23,19 @@ const DEFAULT_ZOOM = 10;
 
 type Filter = 'all' | MapPointStatus;
 
-function makeIcon(status: MapPointStatus, type: 'warehouse' | 'customer') {
-  const color = STATUS_COLOR[status];
+type StockMarkerTone = 'good' | 'borderline' | 'critical';
+
+function makeIcon(
+  status: MapPointStatus,
+  type: 'warehouse' | 'customer',
+  highlightColor?: string,
+) {
+  const color = highlightColor ?? STATUS_COLOR[status];
   const size = type === 'warehouse' ? 18 : 14;
   const pulse =
-    status === 'critical'
+    highlightColor
+      ? 'map-marker--pulse-fast'
+      : status === 'critical'
       ? 'map-marker--pulse-fast'
       : status === 'elevated'
         ? 'map-marker--pulse-slow'
@@ -40,11 +49,46 @@ function makeIcon(status: MapPointStatus, type: 'warehouse' | 'customer') {
   });
 }
 
+function getStockMarkerTone(
+  result: NearestStockResult,
+  needed: number,
+): StockMarkerTone {
+  if (result.surplus >= needed * 1.5) {
+    return 'good';
+  }
+
+  if (result.surplus >= needed) {
+    return 'borderline';
+  }
+
+  return 'critical';
+}
+
+function getStockMarkerColor(tone: StockMarkerTone) {
+  switch (tone) {
+    case 'borderline':
+      return '#f59e0b';
+    case 'critical':
+      return '#ef4444';
+    default:
+      return '#22c55e';
+  }
+}
+
+type RenderablePoint = {
+  point: MapPoint;
+  nearestStock?: NearestStockResult;
+};
+
 function MarkersLayer({
   points,
+  selectedId,
+  needed,
   onSelect,
 }: {
-  points: MapPoint[];
+  points: RenderablePoint[];
+  selectedId?: number;
+  needed: number;
   onSelect: (point: MapPoint | null) => void;
 }) {
   const map = useLeafletMap();
@@ -57,10 +101,35 @@ function MarkersLayer({
       layerRef.current = L.layerGroup().addTo(map);
     }
 
-    points.forEach((point) => {
+    points.forEach(({ point, nearestStock }) => {
+      const tone =
+        nearestStock && point.type === 'warehouse'
+          ? getStockMarkerTone(nearestStock, needed)
+          : null;
       const marker = L.marker([point.lat, point.lng], {
-        icon: makeIcon(point.status, point.type),
+        icon: makeIcon(
+          point.status,
+          point.type,
+          tone ? getStockMarkerColor(tone) : undefined,
+        ),
       });
+
+      if (point.id === selectedId) {
+        marker.setZIndexOffset(1_000);
+      }
+
+      if (nearestStock && point.type === 'warehouse') {
+        marker.bindPopup(
+          `
+            <div style="min-width:180px">
+              <strong>${nearestStock.warehouse_name}</strong><br/>
+              Available: ${formatNumber(nearestStock.surplus)}<br/>
+              Distance: ${formatNumber(nearestStock.distance_km)} km<br/>
+              ETA: ${formatNumber(nearestStock.estimated_arrival_hours)} h
+            </div>
+          `,
+        );
+      }
 
       marker.on('click', () => onSelect(point));
       layerRef.current?.addLayer(marker);
@@ -69,7 +138,51 @@ function MarkersLayer({
     return () => {
       layerRef.current?.clearLayers();
     };
-  }, [map, onSelect, points]);
+  }, [map, needed, onSelect, points, selectedId]);
+
+  return null;
+}
+
+function MapViewportController({
+  defaultCenter,
+  selectedPoint,
+  resultPoints,
+}: {
+  defaultCenter: [number, number];
+  selectedPoint: MapPoint | null;
+  resultPoints: MapPoint[];
+}) {
+  const map = useLeafletMap();
+
+  useEffect(() => {
+    if (selectedPoint?.type === 'warehouse') {
+      map.setView([selectedPoint.lat, selectedPoint.lng], Math.max(map.getZoom(), 11), {
+        animate: true,
+      });
+      return;
+    }
+
+    if (resultPoints.length > 0) {
+      const bounds = L.latLngBounds(
+        resultPoints.map((point) => [point.lat, point.lng] as [number, number]),
+      );
+      map.fitBounds(bounds, {
+        padding: [48, 48],
+        maxZoom: 11,
+        animate: true,
+      });
+      return;
+    }
+
+    if (selectedPoint) {
+      map.setView([selectedPoint.lat, selectedPoint.lng], Math.max(map.getZoom(), 10), {
+        animate: true,
+      });
+      return;
+    }
+
+    map.setView(defaultCenter, DEFAULT_ZOOM, { animate: true });
+  }, [defaultCenter, map, resultPoints, selectedPoint]);
 
   return null;
 }
@@ -103,34 +216,39 @@ function FilterBar({
 }
 
 type SidePanelProps = {
-  point: MapPoint;
-  nearestStock: Array<{
-    warehouse_id: number;
-    warehouse_name: string;
-    surplus: number;
-    distance_km: number;
-    estimated_arrival_hours: number;
-  }>;
+  selectedPoint: MapPoint;
+  selectedCustomer: MapPoint | null;
+  nearestStock: NearestStockResult[];
   isNearestStockLoading: boolean;
   resourceSelected: boolean;
   needed: number;
+  stockByWarehouseId: Record<number, NearestStockResult>;
+  onWarehouseSelect: (warehouseId: number) => void;
   onClose: () => void;
 };
 
 function SidePanel({
-  point,
+  selectedPoint,
+  selectedCustomer,
   nearestStock,
   isNearestStockLoading,
   resourceSelected,
   needed,
+  stockByWarehouseId,
+  onWarehouseSelect,
   onClose,
 }: SidePanelProps) {
+  const selectedWarehouseStock =
+    selectedPoint.type === 'warehouse'
+      ? stockByWarehouseId[selectedPoint.id]
+      : undefined;
+
   return (
     <div className="absolute right-4 top-4 z-[1000] w-72 rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <p className="font-semibold text-text">{point.name}</p>
-          <p className="text-xs capitalize text-text-muted">{point.type}</p>
+          <p className="font-semibold text-text">{selectedPoint.name}</p>
+          <p className="text-xs capitalize text-text-muted">{selectedPoint.type}</p>
         </div>
         <button
           onClick={onClose}
@@ -142,12 +260,13 @@ function SidePanel({
       </div>
 
       <div className="mb-3 flex items-center gap-2">
-        <Badge tone={mapStatusTone(point.status)} className="capitalize">
-          {point.status}
+        <Badge tone={mapStatusTone(selectedPoint.status)} className="capitalize">
+          {selectedPoint.status}
         </Badge>
-        {point.alert_count > 0 ? (
+        {selectedPoint.alert_count > 0 ? (
           <span className="text-xs text-text-muted">
-            {point.alert_count} open alert{point.alert_count !== 1 ? 's' : ''}
+            {selectedPoint.alert_count} open alert
+            {selectedPoint.alert_count !== 1 ? 's' : ''}
           </span>
         ) : null}
       </div>
@@ -155,15 +274,37 @@ function SidePanel({
       <div className="space-y-1 text-sm text-text-muted">
         <p>
           <span className="text-text-muted/60">Lat: </span>
-          {point.lat.toFixed(5)}
+          {selectedPoint.lat.toFixed(5)}
         </p>
         <p>
           <span className="text-text-muted/60">Lng: </span>
-          {point.lng.toFixed(5)}
+          {selectedPoint.lng.toFixed(5)}
         </p>
       </div>
 
-      {point.type === 'customer' ? (
+      {selectedWarehouseStock ? (
+        <div className="mt-4 border-t border-border pt-4">
+          <p className="text-xs uppercase tracking-[0.18em] text-text-muted">
+            Stock insight
+          </p>
+          <div className="mt-3 space-y-2 rounded-xl border border-border bg-surface/50 p-3">
+            <p className="text-sm font-medium text-text">
+              {selectedWarehouseStock.warehouse_name}
+            </p>
+            <p className="text-xs text-text-muted">
+              Available: {formatNumber(selectedWarehouseStock.surplus)}
+            </p>
+            <p className="text-xs text-text-muted">
+              Distance: {formatNumber(selectedWarehouseStock.distance_km)} km
+            </p>
+            <p className="text-xs text-text-muted">
+              ETA: {formatNumber(selectedWarehouseStock.estimated_arrival_hours)} h
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedPoint.type === 'customer' ? (
         <div className="mt-4 border-t border-border pt-4">
           <p className="text-xs uppercase tracking-[0.18em] text-text-muted">
             Nearest stock
@@ -176,27 +317,35 @@ function SidePanel({
             <p className="mt-2 text-sm text-text-muted">Loading nearest stock…</p>
           ) : nearestStock.length === 0 ? (
             <p className="mt-2 text-sm text-text-muted">
-              No warehouse can supply {formatNumber(needed)} units while holding
-              the 20% safety stock.
+              No stock available for {formatNumber(needed)} units with safety stock
+              applied.
             </p>
           ) : (
             <div className="mt-3 space-y-2">
               {nearestStock.map((entry) => (
-                <div
+                <button
+                  type="button"
                   key={entry.warehouse_id}
-                  className="rounded-xl border border-border bg-surface/50 p-3"
+                  onClick={() => onWarehouseSelect(entry.warehouse_id)}
+                  className="block w-full rounded-xl border border-border bg-surface/50 p-3 text-left transition-colors hover:border-primary/30 hover:bg-surface"
                 >
                   <p className="text-sm font-medium">{entry.warehouse_name}</p>
                   <p className="mt-1 text-xs text-text-muted">
-                    {formatNumber(entry.surplus)} surplus ·{' '}
+                    {formatNumber(entry.surplus)} available ·{' '}
                     {formatNumber(entry.distance_km)} km ·{' '}
                     {formatNumber(entry.estimated_arrival_hours)}h ETA
                   </p>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
+      ) : null}
+
+      {selectedCustomer && selectedPoint.type === 'warehouse' ? (
+        <p className="mt-4 text-xs text-text-muted">
+          Serving {selectedCustomer.name} for {formatNumber(needed)} units.
+        </p>
       ) : null}
     </div>
   );
@@ -208,7 +357,8 @@ type MapViewProps = {
 
 export function MapView({ compact = false }: MapViewProps) {
   const { user } = useAuth();
-  const [selected, setSelected] = useState<MapPoint | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<MapPoint | null>(null);
   const [selectedResourceId, setSelectedResourceId] = useState<number | undefined>();
   const [needed, setNeeded] = useState(100);
   const [filter, setFilter] = useState<Filter>('all');
@@ -231,10 +381,16 @@ export function MapView({ compact = false }: MapViewProps) {
     [items],
   );
 
-  const { points, nearestStock, isLoading, isNearestStockLoading, error } = useMap({
-    resourceId: selected?.type === 'customer' ? selectedResourceId : undefined,
-    pointId: selected?.type === 'customer' ? selected.id : undefined,
+  const { points, isLoading, error } = useMap();
+  const {
+    data: nearestStock,
+    isLoading: isNearestStockLoading,
+    error: nearestStockError,
+  } = useNearestStock({
+    resourceId: selectedResourceId,
+    customerId: selectedCustomer?.id,
     needed,
+    enabled: Boolean(selectedCustomer),
   });
 
   useEffect(() => {
@@ -243,8 +399,86 @@ export function MapView({ compact = false }: MapViewProps) {
     }
   }, [resourceOptions, selectedResourceId]);
 
-  const visiblePoints =
-    filter === 'all' ? points : points.filter((point) => point.status === filter);
+  const stockByWarehouseId = useMemo(
+    () =>
+      Object.fromEntries(nearestStock.map((entry) => [entry.warehouse_id, entry])),
+    [nearestStock],
+  );
+
+  const warehousePointsById = useMemo(
+    () =>
+      Object.fromEntries(
+        points
+          .filter((point) => point.type === 'warehouse')
+          .map((point) => [point.id, point]),
+      ),
+    [points],
+  );
+
+  const relevantWarehousePoints = useMemo(
+    () =>
+      nearestStock
+        .map((entry) => warehousePointsById[entry.warehouse_id])
+        .filter((point): point is MapPoint => Boolean(point)),
+    [nearestStock, warehousePointsById],
+  );
+
+  const hasActiveNearestStockSearch = Boolean(
+    selectedCustomer && selectedResourceId && needed > 0,
+  );
+
+  const filteredPoints = useMemo(
+    () =>
+      filter === 'all' ? points : points.filter((point) => point.status === filter),
+    [filter, points],
+  );
+
+  const renderablePoints = useMemo(() => {
+    if (hasActiveNearestStockSearch) {
+      const customerEntry = selectedCustomer
+        ? [{ point: selectedCustomer }]
+        : [];
+
+      return [
+        ...customerEntry,
+        ...relevantWarehousePoints.map((point) => ({
+          point,
+          nearestStock: stockByWarehouseId[point.id],
+        })),
+      ];
+    }
+
+    return filteredPoints.map((point) => ({ point }));
+  }, [
+    filteredPoints,
+    hasActiveNearestStockSearch,
+    relevantWarehousePoints,
+    selectedCustomer,
+    stockByWarehouseId,
+  ]);
+
+  const mapFocusPoints = useMemo(
+    () =>
+      selectedCustomer
+        ? [selectedCustomer, ...relevantWarehousePoints]
+        : relevantWarehousePoints,
+    [relevantWarehousePoints, selectedCustomer],
+  );
+
+  const handleSelectPoint = (point: MapPoint | null) => {
+    if (!point) {
+      setSelectedPoint(null);
+      return;
+    }
+
+    if (point.type === 'customer') {
+      setSelectedCustomer(point);
+    }
+
+    setSelectedPoint(point);
+  };
+
+  const activeError = error ?? nearestStockError;
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl border border-border">
@@ -254,9 +488,9 @@ export function MapView({ compact = false }: MapViewProps) {
         </div>
       ) : null}
 
-      {error ? (
+      {activeError ? (
         <div className="absolute bottom-4 left-4 z-[1000] rounded-xl border border-danger/20 bg-background/95 px-3 py-2 text-sm text-danger shadow-lg">
-          {error}
+          {activeError}
         </div>
       ) : null}
 
@@ -296,15 +530,30 @@ export function MapView({ compact = false }: MapViewProps) {
         ) : null}
       </div>
 
-      {selected ? (
+      {selectedPoint ? (
         <SidePanel
-          point={selected}
+          selectedPoint={selectedPoint}
+          selectedCustomer={selectedCustomer}
           nearestStock={nearestStock}
           isNearestStockLoading={isNearestStockLoading}
           resourceSelected={Boolean(selectedResourceId)}
           needed={needed}
-          onClose={() => setSelected(null)}
+          stockByWarehouseId={stockByWarehouseId}
+          onWarehouseSelect={(warehouseId) => {
+            const warehousePoint = warehousePointsById[warehouseId];
+
+            if (warehousePoint) {
+              setSelectedPoint(warehousePoint);
+            }
+          }}
+          onClose={() => setSelectedPoint(null)}
         />
+      ) : null}
+
+      {hasActiveNearestStockSearch && !isNearestStockLoading && nearestStock.length === 0 ? (
+        <div className="absolute bottom-4 right-4 z-[1000] rounded-xl border border-border bg-background/95 px-3 py-2 text-sm text-text-muted shadow-lg">
+          No stock available.
+        </div>
       ) : null}
 
       <MapContainer
@@ -317,7 +566,17 @@ export function MapView({ compact = false }: MapViewProps) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
-        <MarkersLayer points={visiblePoints} onSelect={setSelected} />
+        <MarkersLayer
+          points={renderablePoints}
+          selectedId={selectedPoint?.id}
+          needed={needed}
+          onSelect={handleSelectPoint}
+        />
+        <MapViewportController
+          defaultCenter={DEFAULT_CENTER}
+          selectedPoint={selectedPoint}
+          resultPoints={mapFocusPoints}
+        />
       </MapContainer>
     </div>
   );

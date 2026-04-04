@@ -7,8 +7,9 @@ import {
   getProposal,
   rejectProposal,
   runAi,
+  type AlertWithReasoning,
 } from '@/features/alerts/api/alertsApi';
-import type { PredictiveAlert, RebalancingProposal } from '@/shared/api';
+import type { RebalancingProposal } from '@/shared/api';
 
 type UseAlertsOptions = {
   page?: number;
@@ -21,7 +22,7 @@ export function useAlerts({
   pageSize = 20,
   enabled = true,
 }: UseAlertsOptions = {}) {
-  const [alerts, setAlerts] = useState<PredictiveAlert[]>([]);
+  const [alerts, setAlerts] = useState<AlertWithReasoning[]>([]);
   const [proposals, setProposals] = useState<Record<number, RebalancingProposal | null>>(
     {},
   );

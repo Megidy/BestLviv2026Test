@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
 import { useMap } from '@/features/map/hooks/useMap';
+import { useNearestStock } from '@/features/map/useNearestStock';
 import { useRequests } from '@/features/requests/hooks/useRequests';
 import type { DeliveryPriority } from '@/shared/api';
 import {
@@ -47,10 +48,16 @@ export function ResourceModule() {
     [items, resourceId],
   );
 
-  const { points, nearestStock, isNearestStockLoading, error: mapError } = useMap({
+  const { points, error: mapError } = useMap();
+  const {
+    data: nearestStock,
+    isLoading: isNearestStockLoading,
+    error: nearestStockError,
+  } = useNearestStock({
     resourceId: resource?.resourceId,
-    pointId: selectedCustomerId,
+    customerId: selectedCustomerId,
     needed: requestQuantity,
+    enabled: Boolean(resource && selectedCustomerId),
   });
 
   const customers = useMemo(
@@ -580,7 +587,9 @@ export function ResourceModule() {
               {isNearestStockLoading ? (
                 <p className="text-xs text-text-muted">Calculating nearest stock…</p>
               ) : null}
-              {mapError ? <p className="text-xs text-danger">{mapError}</p> : null}
+              {nearestStockError || mapError ? (
+                <p className="text-xs text-danger">{nearestStockError ?? mapError}</p>
+              ) : null}
             </CardContent>
           </Card>
         </div>
