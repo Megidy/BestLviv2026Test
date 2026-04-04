@@ -72,11 +72,13 @@ func (c *PredictionController) RecordDemand(ctx *echo.Context) error {
 		reading.RecordedAt = time.Now()
 	}
 
+	c.logger.Info("recording demand", "point_id", reading.PointID, "resource_id", reading.ResourceID, "quantity", reading.Quantity, "source", reading.Source)
 	result, err := c.useCase.RecordDemand(ctx.Request().Context(), reading)
 	if err != nil {
-		c.logger.Error("record demand failed", "error", err)
+		c.logger.Error("record demand failed", "point_id", reading.PointID, "resource_id", reading.ResourceID, "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
+	c.logger.Info("demand recorded", "id", result.ID, "point_id", result.PointID, "resource_id", result.ResourceID)
 	return httpresponse.NewSuccessResponse(ctx, result, http.StatusCreated)
 }
 
@@ -103,8 +105,10 @@ func (c *PredictionController) GetDemandReadings(ctx *echo.Context) error {
 		l = 20
 	}
 
+	c.logger.Info("fetching demand readings", "point_id", pointID, "limit", l, "offset", o)
 	readings, total, err := c.useCase.GetDemandReadings(ctx.Request().Context(), pointID, l, o)
 	if err != nil {
+		c.logger.Error("get demand readings failed", "point_id", pointID, "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
 	return httpresponse.NewSuccessResponse(ctx, map[string]any{"readings": readings, "total": total}, http.StatusOK)
@@ -128,10 +132,13 @@ func (c *PredictionController) GetOpenAlerts(ctx *echo.Context) error {
 		l = 20
 	}
 
+	c.logger.Info("fetching open alerts", "limit", l, "offset", o)
 	alerts, total, err := c.useCase.GetOpenAlerts(ctx.Request().Context(), l, o)
 	if err != nil {
+		c.logger.Error("get open alerts failed", "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
+	c.logger.Info("open alerts fetched", "count", len(alerts), "total", total)
 	return httpresponse.NewSuccessResponse(ctx, map[string]any{"alerts": alerts, "total": total}, http.StatusOK)
 }
 
@@ -149,8 +156,10 @@ func (c *PredictionController) GetAlertsByPoint(ctx *echo.Context) error {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrBadRequest, "invalid point_id")
 	}
 
+	c.logger.Info("fetching alerts by point", "point_id", pointID)
 	alerts, err := c.useCase.GetAlertsByPoint(ctx.Request().Context(), pointID)
 	if err != nil {
+		c.logger.Error("get alerts by point failed", "point_id", pointID, "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
 	return httpresponse.NewSuccessResponse(ctx, alerts, http.StatusOK)
@@ -169,9 +178,12 @@ func (c *PredictionController) DismissAlert(ctx *echo.Context) error {
 	if err != nil {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrBadRequest, "invalid alert_id")
 	}
+	c.logger.Info("dismissing alert", "alert_id", alertID)
 	if err := c.useCase.DismissAlert(ctx.Request().Context(), alertID); err != nil {
+		c.logger.Error("dismiss alert failed", "alert_id", alertID, "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
+	c.logger.Info("alert dismissed", "alert_id", alertID)
 	return httpresponse.NewSuccessResponse(ctx, nil, http.StatusOK)
 }
 
@@ -188,8 +200,10 @@ func (c *PredictionController) GetProposal(ctx *echo.Context) error {
 	if err != nil {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrBadRequest, "invalid proposal_id")
 	}
+	c.logger.Info("fetching proposal", "proposal_id", id)
 	proposal, err := c.useCase.GetProposal(ctx.Request().Context(), id)
 	if err != nil {
+		c.logger.Error("get proposal failed", "proposal_id", id, "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
 	return httpresponse.NewSuccessResponse(ctx, proposal, http.StatusOK)
@@ -208,10 +222,13 @@ func (c *PredictionController) ApproveProposal(ctx *echo.Context) error {
 	if err != nil {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrBadRequest, "invalid proposal_id")
 	}
+	c.logger.Info("approving proposal", "proposal_id", id)
 	proposal, err := c.useCase.ApproveProposal(ctx.Request().Context(), id)
 	if err != nil {
+		c.logger.Error("approve proposal failed", "proposal_id", id, "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
+	c.logger.Info("proposal approved", "proposal_id", id)
 	return httpresponse.NewSuccessResponse(ctx, proposal, http.StatusOK)
 }
 
@@ -228,9 +245,12 @@ func (c *PredictionController) DismissProposal(ctx *echo.Context) error {
 	if err != nil {
 		return httpresponse.NewErrorResponse(ctx, entity.ErrBadRequest, "invalid proposal_id")
 	}
+	c.logger.Info("dismissing proposal", "proposal_id", id)
 	if err := c.useCase.DismissProposal(ctx.Request().Context(), id); err != nil {
+		c.logger.Error("dismiss proposal failed", "proposal_id", id, "error", err)
 		return httpresponse.NewErrorResponse(ctx, err)
 	}
+	c.logger.Info("proposal dismissed", "proposal_id", id)
 	return httpresponse.NewSuccessResponse(ctx, nil, http.StatusOK)
 }
 

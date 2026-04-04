@@ -59,6 +59,8 @@ func NewRouter(
 }
 
 func (r *Router) RegisterRoutes() {
+	r.e.Use(r.middleware.RequestLogger())
+
 	r.e.GET("/health", func(c *echo.Context) error { return c.JSON(http.StatusOK, map[string]string{"status": "healthy"}) })
 	r.e.GET("/swagger/*", echoSwagger.WrapHandlerV3)
 	r.e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
@@ -77,6 +79,7 @@ func (r *Router) RegisterRoutes() {
 		auth := v1.Group("/auth")
 		auth.POST("/login", r.authController.Login)
 		auth.GET("/me", r.authController.GetMe, withJWT)
+		auth.POST("/create", r.authController.Create, withJWT)
 	}
 
 	// Inventory
