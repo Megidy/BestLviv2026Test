@@ -361,3 +361,11 @@ func (r *AIRepo) UpdateProposalStatus(ctx context.Context, id uint, status entit
 	)
 	return err
 }
+
+func (r *AIRepo) ResolveAlertByProposalID(ctx context.Context, proposalID uint) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE predictive_alerts SET status = $1 WHERE proposal_id = $2 AND status = 'open'`,
+		entity.AlertStatusResolved, proposalID,
+	)
+	return err
+}
