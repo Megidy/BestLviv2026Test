@@ -43,6 +43,8 @@ Other available logins: `dispatcher_w1`, `worker1_w1`, `admin_w3` … `admin_w20
 }
 ```
 
+> Note: the password field JSON tag is literally `"required"` (a typo in the DTO). Use that key name exactly.
+
 Valid roles: `worker`, `dispatcher`
 
 ---
