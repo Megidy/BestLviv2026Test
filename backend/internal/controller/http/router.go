@@ -61,7 +61,11 @@ func NewRouter(
 func (r *Router) RegisterRoutes() {
 	r.e.GET("/health", func(c *echo.Context) error { return c.JSON(http.StatusOK, map[string]string{"status": "healthy"}) })
 	r.e.GET("/swagger/*", echoSwagger.WrapHandlerV3)
-	r.e.Use(echomiddleware.CORS())
+	r.e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
+		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
+	}))
 	r.e.Validator = r.validator
 	v1 := r.e.Group("/v1")
 
