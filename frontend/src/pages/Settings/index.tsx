@@ -1,8 +1,18 @@
+import { useNavigate } from 'react-router-dom';
+
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
-import { Input } from '@/shared/ui/Input';
+import { formatDateTime } from '@/shared/lib/formatters';
 
 export function SettingsPage() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-5 animate-slide-up">
       <Card>
@@ -10,49 +20,23 @@ export function SettingsPage() {
           <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm text-text-muted" htmlFor="name">
-              Name
-            </label>
-            <Input defaultValue="Operator Ivanov" id="name" />
+          <div className="rounded-xl border border-border bg-surface/60 p-4">
+            <p className="text-sm text-text-muted">Username</p>
+            <p className="mt-2 text-lg font-semibold">{user.username}</p>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm text-text-muted" htmlFor="email">
-              Email
-            </label>
-            <Input defaultValue="ivanov@logisync.io" id="email" type="email" />
+          <div className="rounded-xl border border-border bg-surface/60 p-4">
+            <p className="text-sm text-text-muted">Role</p>
+            <p className="mt-2 text-lg font-semibold capitalize">{user.role}</p>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm text-text-muted" htmlFor="role">
-              Role
-            </label>
-            <Input defaultValue="Operator" id="role" disabled />
+          <div className="rounded-xl border border-border bg-surface/60 p-4">
+            <p className="text-sm text-text-muted">Warehouse / location</p>
+            <p className="mt-2 text-lg font-semibold">#{user.location_id}</p>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm text-text-muted" htmlFor="timezone">
-              Time zone
-            </label>
-            <Input defaultValue="Europe/Kyiv" id="timezone" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Password</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm text-text-muted" htmlFor="current-password">
-              Current password
-            </label>
-            <Input placeholder="••••••••" type="password" id="current-password" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm text-text-muted" htmlFor="new-password">
-              New password
-            </label>
-            <Input placeholder="••••••••" type="password" id="new-password" />
+          <div className="rounded-xl border border-border bg-surface/60 p-4">
+            <p className="text-sm text-text-muted">Session created</p>
+            <p className="mt-2 text-lg font-semibold">
+              {formatDateTime(user.created_at)}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -64,12 +48,17 @@ export function SettingsPage() {
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm text-text-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-            Active session since 02.04.2026, 08:00
+            Authenticated against the live backend
           </p>
-          <div className="flex gap-3">
-            <Button variant="outline">Save changes</Button>
-            <Button variant="danger">Sign out</Button>
-          </div>
+          <Button
+            variant="danger"
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
+          >
+            Sign out
+          </Button>
         </CardContent>
       </Card>
     </div>

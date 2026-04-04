@@ -1,5 +1,8 @@
 import { useLocation } from 'react-router-dom';
 
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { Badge } from '@/shared/ui/Badge';
+
 const titleByRoute: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/inventory': 'Inventory',
@@ -10,6 +13,7 @@ const titleByRoute: Record<string, string> = {
 
 export function Topbar() {
   const location = useLocation();
+  const { user } = useAuth();
   const title = location.pathname.startsWith('/resource/')
     ? 'Resource details'
     : (titleByRoute[location.pathname] ?? 'Logisync');
@@ -24,6 +28,17 @@ export function Topbar() {
         </p>
       </div>
 
+      <div className="flex items-center gap-3">
+        {user ? (
+          <>
+            <div className="text-right">
+              <p className="text-sm font-medium text-text">{user.username}</p>
+              <p className="text-xs capitalize text-text-muted">{user.role}</p>
+            </div>
+            <Badge tone="info">Location #{user.location_id}</Badge>
+          </>
+        ) : null}
+      </div>
     </header>
   );
 }

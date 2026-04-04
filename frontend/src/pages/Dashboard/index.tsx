@@ -1,57 +1,83 @@
 import { AlertTriangle, MapPin, Package, ShieldAlert } from 'lucide-react';
 
-import {
-  alerts,
-  inventoryItems,
-  locationSummaries,
-} from '@/shared/config/operations-data';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAlerts } from '@/features/alerts/hooks/useAlerts';
+import { useInventory } from '@/features/inventory/hooks/useInventory';
+import { useMap } from '@/features/map/hooks/useMap';
+import { formatDateTime } from '@/shared/lib/formatters';
+import { Card, CardContent } from '@/shared/ui/Card';
 import { cn } from '@/shared/lib/cn';
 import { MapPanel } from '@/widgets/MapPanel';
 import { ResourcePanel } from '@/widgets/ResourcePanel';
 
-const kpis = [
-  {
-    label: 'Active locations',
-    value: locationSummaries.length,
-    color: 'text-primary',
-    glow: 'shadow-[0_0_12px_rgba(145,98,29,0.12)]',
-    icon: MapPin,
-    iconColor: 'text-primary',
-    iconBg: 'bg-primary/10',
-  },
-  {
-    label: 'Open alerts',
-    value: alerts.filter((item) => item.status === 'open').length,
-    color: 'text-danger',
-    glow: 'shadow-[0_0_12px_rgba(160,69,53,0.12)]',
-    icon: AlertTriangle,
-    iconColor: 'text-danger',
-    iconBg: 'bg-danger/10',
-  },
-  {
-    label: 'Resources tracked',
-    value: inventoryItems.length,
-    color: 'text-success',
-    glow: 'shadow-[0_0_12px_rgba(78,122,81,0.12)]',
-    icon: Package,
-    iconColor: 'text-success',
-    iconBg: 'bg-success/10',
-  },
-  {
-    label: 'Critical shortages',
-    value: inventoryItems.filter((item) => item.tone === 'danger').length,
-    color: 'text-warning',
-    glow: 'shadow-[0_0_12px_rgba(169,122,32,0.12)]',
-    icon: ShieldAlert,
-    iconColor: 'text-warning',
-    iconBg: 'bg-warning/10',
-  },
-];
-
 export function DashboardPage() {
+  const { user } = useAuth();
+  const { points, isLoading: isMapLoading, error: mapError } = useMap();
+  const {
+    alerts,
+    isLoading: isAlertsLoading,
+    error: alertsError,
+  } = useAlerts({ pageSize: 10 });
+  const {
+    items,
+    isLoading: isInventoryLoading,
+    error: inventoryError,
+  } = useInventory({
+    enabled: Boolean(user?.location_id),
+    locationId: user?.location_id ?? 0,
+    page: 1,
+    pageSize: 20,
+  });
+  const isLoading = isMapLoading || isAlertsLoading || isInventoryLoading;
+  const error = mapError ?? alertsError ?? inventoryError;
+
+  const kpis = [
+    {
+      label: 'Operational points',
+      value: points.length,
+      color: 'text-primary',
+      glow: 'shadow-[0_0_12px_rgba(145,98,29,0.12)]',
+      icon: MapPin,
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10',
+    },
+    {
+      label: 'Open alerts',
+      value: alerts.length,
+      color: 'text-danger',
+      glow: 'shadow-[0_0_12px_rgba(160,69,53,0.12)]',
+      icon: AlertTriangle,
+      iconColor: 'text-danger',
+      iconBg: 'bg-danger/10',
+    },
+    {
+      label: 'Resources tracked',
+      value: items.length,
+      color: 'text-success',
+      glow: 'shadow-[0_0_12px_rgba(78,122,81,0.12)]',
+      icon: Package,
+      iconColor: 'text-success',
+      iconBg: 'bg-success/10',
+    },
+    {
+      label: 'Critical points',
+      value: points.filter((point) => point.status === 'critical').length,
+      color: 'text-warning',
+      glow: 'shadow-[0_0_12px_rgba(169,122,32,0.12)]',
+      icon: ShieldAlert,
+      iconColor: 'text-warning',
+      iconBg: 'bg-warning/10',
+    },
+  ];
+
   return (
     <div className="space-y-6 animate-slide-up">
+      {error ? (
+        <Card>
+          <CardContent className="py-4 text-sm text-danger">{error}</CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {kpis.map((item) => (
           <Card key={item.label} className={cn('flex min-h-[88px] items-center p-5', item.glow)}>
@@ -71,16 +97,30 @@ export function DashboardPage() {
           title="Location map"
           description="Dispatcher view of operational points."
         />
-        <ResourcePanel items={locationSummaries} />
+        <ResourcePanel
+          variant="locations"
+          items={points
+            .filter((point) => point.type === 'warehouse')
+            .slice(0, 6)
+            .map((point) => ({
+              id: point.id,
+              name: point.name,
+              type: point.type,
+              status: point.status,
+              alerts: point.alert_count,
+            }))}
+        />
       </div>
 
       <Card className="flex min-h-[52px] items-center justify-between px-5">
         <p className="text-sm text-text-muted">
-          Synchronized: 03 April 2026, 15:36 Europe/Kyiv
+          {isLoading
+            ? 'Synchronizing live data…'
+            : `Synchronized: ${formatDateTime(new Date().toISOString())}`}
         </p>
         <span className="flex items-center gap-2 text-sm font-medium text-text-muted">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
-          Live
+          {isLoading ? 'Loading' : 'Live'}
         </span>
       </Card>
     </div>
