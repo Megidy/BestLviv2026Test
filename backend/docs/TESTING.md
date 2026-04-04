@@ -153,7 +153,26 @@ The `proposal_id` comes from the `proposal_id` field on an alert.
 
 ## Step 6 — Delivery Requests
 
-### Create a delivery request
+### Status machine
+
+**Normal / elevated / critical flow:**
+```
+pending → (allocate) → allocated → (dispatch all) → in_transit → (deliver) → delivered
+```
+
+**Urgent flow (auto-allocated on create, skips planned/approval):**
+```
+pending → allocated[approved] → (dispatch all) → in_transit → (deliver) → delivered
+```
+
+Key constraints:
+- `PATCH items` — only works when status is `pending`. Once allocated, items are locked.
+- `approve allocation` — only works when allocation status is `planned`. Urgent requests create allocations as `approved` already, skip straight to dispatch.
+- `deliver request` — only works when status is `in_transit` (all allocations must be dispatched first).
+
+---
+
+### Create a normal request (goes to pending, needs manual allocation)
 `POST /v1/delivery-requests`
 
 ```json
@@ -167,9 +186,9 @@ The `proposal_id` comes from the `proposal_id` field on an alert.
 }
 ```
 
-Valid priorities: `normal`, `elevated`, `critical`, `urgent`
+### Create an urgent request (auto-allocated immediately, allocations already approved)
+`POST /v1/delivery-requests`
 
-`arrive_till` is optional:
 ```json
 {
   "destination_id": 3,
@@ -181,25 +200,9 @@ Valid priorities: `normal`, `elevated`, `critical`, `urgent`
 }
 ```
 
-Note: `urgent` priority triggers immediate auto-allocation.
+`arrive_till` is **required** for urgent priority.
 
-### List delivery requests
-`GET /v1/delivery-requests`
-
-```
-page=1&pageSize=20
-```
-
-### Get a single request
-`GET /v1/delivery-requests/{id}` — no body.
-
-### Cancel a request
-`POST /v1/delivery-requests/{id}/cancel` — no body.
-
-### Escalate priority
-`POST /v1/delivery-requests/{id}/escalate` — no body.
-
-### Update item quantity
+### Update item quantity (only while status = pending)
 `PATCH /v1/delivery-requests/{id}/items`
 
 ```json
@@ -209,13 +212,29 @@ page=1&pageSize=20
 }
 ```
 
+### List delivery requests
+`GET /v1/delivery-requests`
+
+```
+page=1&pageSize=20
+```
+
+### Get a single request with items and allocations
+`GET /v1/delivery-requests/{id}` — no body.
+
+### Cancel a request (pending or allocated only)
+`POST /v1/delivery-requests/{id}/cancel` — no body.
+
+### Escalate priority
+`POST /v1/delivery-requests/{id}/escalate` — no body. Bumps one level: normal → elevated → critical → urgent.
+
 ### Auto-allocate all pending requests
-`POST /v1/delivery-requests/allocate` — no body.
+`POST /v1/delivery-requests/allocate` — no body. Returns count of allocated requests.
 
-### Approve all allocations for a request
-`POST /v1/delivery-requests/{id}/approve-all` — no body.
+### Approve all allocations for a request at once
+`POST /v1/delivery-requests/{id}/approve-all` — no body. Skips individual allocation approvals.
 
-### Mark as delivered
+### Mark as delivered (only when status = in_transit)
 `POST /v1/delivery-requests/{id}/deliver` — no body.
 
 ---
@@ -229,10 +248,12 @@ page=1&pageSize=20
 page=1&pageSize=20
 ```
 
-### Approve an allocation
+### Approve an allocation (only when status = planned)
 `POST /v1/allocations/{id}/approve` — no body.
 
-### Reject an allocation
+> Urgent requests create allocations as `approved` — skip this step and go straight to dispatch.
+
+### Reject an allocation (planned or approved only)
 `POST /v1/allocations/{id}/reject`
 
 ```json
@@ -241,8 +262,8 @@ page=1&pageSize=20
 }
 ```
 
-### Dispatch an allocation
-`POST /v1/allocations/{id}/dispatch` — no body.
+### Dispatch an allocation (only when status = approved)
+`POST /v1/allocations/{id}/dispatch` — no body. When ALL allocations for a request are dispatched, request moves to `in_transit`.
 
 ---
 
@@ -277,11 +298,26 @@ Expected response:
 
 ## Quick End-to-End Flow
 
+### AI alert → rebalancing
 1. `POST /v1/auth/login` → copy token → Authorize
-2. `POST /v1/ai/run` → wait 1-2 seconds
+2. `POST /v1/ai/run` → triggers prediction immediately
 3. `GET /v1/predictive-alerts` → find a critical alert, note its `proposal_id`
-4. `GET /v1/rebalancing-proposals/{proposal_id}` → review transfers
-5. `POST /v1/rebalancing-proposals/{proposal_id}/approve` → approved
-6. `POST /v1/delivery-requests` with `priority: urgent` → auto-allocated
-7. `GET /v1/delivery-requests` → see the new request
-8. `GET /v1/audit-log` → see the full trail
+4. `GET /v1/rebalancing-proposals/{proposal_id}` → review suggested transfers
+5. `POST /v1/rebalancing-proposals/{proposal_id}/approve`
+
+### Normal delivery request (manual allocation)
+1. `POST /v1/delivery-requests` with `priority: normal`
+2. `POST /v1/delivery-requests/allocate` → allocates all pending
+3. `GET /v1/allocations` → find allocation IDs, status = `planned`
+4. `POST /v1/allocations/{id}/approve` (or `POST /v1/delivery-requests/{id}/approve-all`)
+5. `POST /v1/allocations/{id}/dispatch` → when all dispatched, request = `in_transit`
+6. `POST /v1/delivery-requests/{id}/deliver`
+
+### Urgent delivery request (auto-approved, skip allocation step)
+1. `POST /v1/delivery-requests` with `priority: urgent` + `arrive_till`
+2. `GET /v1/allocations` → allocations already `approved`
+3. `POST /v1/allocations/{id}/dispatch`
+4. `POST /v1/delivery-requests/{id}/deliver`
+
+### Audit trail
+`GET /v1/audit-log` — every action above is recorded here.
