@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.3...v0.1.4) (2026-04-04)
+
+
+### Features
+
+* add CORS middleware and update dependencies ([6a242d9](https://github.com/Megidy/BestLviv2026Test/commit/6a242d9f2caecbe9d05c6688f7dc0e595537b8d3))
+* update map points endpoint to v1 and adjust documentation ([4319787](https://github.com/Megidy/BestLviv2026Test/commit/4319787493ed2a5fadb69c598af416f62630e4aa))
+
 ## [0.1.3](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.2...v0.1.3) (2026-04-04)
 
 
