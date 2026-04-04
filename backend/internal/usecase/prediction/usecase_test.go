@@ -31,6 +31,14 @@ type stubAIRepo struct {
 	updatedProposal   entity.ProposalStatus
 }
 
+func (s *stubAIRepo) GetCustomerName(ctx context.Context, customerID uint) (string, error) {
+	return "", nil
+}
+
+func (s *stubAIRepo) GetResourceName(ctx context.Context, resourceID uint) (string, error) {
+	return "", nil
+}
+
 func (s *stubAIRepo) InsertDemandReading(ctx context.Context, d entity.DemandReading) (entity.DemandReading, error) {
 	return d, nil
 }

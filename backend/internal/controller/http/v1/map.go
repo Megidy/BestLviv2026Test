@@ -31,7 +31,7 @@ func NewMapController(logger *slog.Logger, uc mapUseCase) *MapController {
 // @Security    BearerAuth
 // @Success     200 {array}  entity.MapPoint
 // @Failure     500 {object} httpresponse.Response{}
-// @Router      /map/points [get]
+// @Router      /v1/map/points [get]
 func (c *MapController) GetPoints(ctx *echo.Context) error {
 	points, err := c.useCase.GetMapPoints(ctx.Request().Context())
 	if err != nil {

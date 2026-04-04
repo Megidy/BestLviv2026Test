@@ -398,27 +398,6 @@ info:
   title: Best Lviv api docs
   version: "1.0"
 paths:
-  /map/points:
-    get:
-      description: Returns all warehouses and delivery points with status and coordinates
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/entity.MapPoint'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/httpresponse.Response'
-      security:
-      - BearerAuth: []
-      summary: Get all map points
-      tags:
-      - map
   /v1/ai/run:
     post:
       produces:
@@ -1022,6 +1001,27 @@ paths:
       summary: Get all inventory units by location
       tags:
       - Inventory
+  /v1/map/points:
+    get:
+      description: Returns all warehouses and delivery points with status and coordinates
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.MapPoint'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      security:
+      - BearerAuth: []
+      summary: Get all map points
+      tags:
+      - map
   /v1/predictive-alerts:
     get:
       parameters:

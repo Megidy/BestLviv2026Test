@@ -15,40 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/map/points": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns all warehouses and delivery points with status and coordinates",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "map"
-                ],
-                "summary": "Get all map points",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/entity.MapPoint"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/httpresponse.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/ai/run": {
             "post": {
                 "security": [
@@ -1032,6 +998,40 @@ const docTemplate = `{
                         "description": "Bad Request - Invalid parameters or validation error",
                         "schema": {
                             "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/map/points": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all warehouses and delivery points with status and coordinates",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Get all map points",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/entity.MapPoint"
+                            }
                         }
                     },
                     "500": {
