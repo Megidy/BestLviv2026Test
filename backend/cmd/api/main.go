@@ -84,12 +84,13 @@ func newApp(ctx context.Context) (*app, error) {
 	// Use cases
 	authUseCase := auth.New(c.JWTSecret, c.JwtDuration, userRepo)
 	inventoryUseCase := inventory.New(inventoryRepo)
-	var groqClient *groq.Client
+	var predictionUseCase *prediction.UseCase
 	if c.GroqAPIKey != "" {
-		groqClient = groq.New(c.GroqAPIKey, c.GroqModel)
 		logger.Info("Groq LLM rationale generation enabled", "model", c.GroqModel)
+		predictionUseCase = prediction.New(aiRepo, groq.New(c.GroqAPIKey, c.GroqModel), logger)
+	} else {
+		predictionUseCase = prediction.New(aiRepo, nil, logger)
 	}
-	predictionUseCase := prediction.New(aiRepo, groqClient, logger)
 	deliveryUseCase := deliveryrequest.New(deliveryRepo, auditRepo, logger)
 	mapUseCase := mapview.New(mapRepo)
 
