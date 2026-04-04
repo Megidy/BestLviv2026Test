@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.1...v0.1.2) (2026-04-04)
+
+
+### Bug Fixes
+
+* lowercase repo name in workflows ([4c69eee](https://github.com/Megidy/BestLviv2026Test/commit/4c69eee9818334133d719fd80f1384b19b670fc4))
+* lowercase repo name in workflows ([52afb6c](https://github.com/Megidy/BestLviv2026Test/commit/52afb6cbc4c21523d541d8e38981ef1722217a26))
+
 ## [0.1.1](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.0...v0.1.1) (2026-04-04)
 
 
