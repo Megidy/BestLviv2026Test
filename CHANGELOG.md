@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.4...v0.1.5) (2026-04-04)
+
+
+### Features
+
+* enhance CORS configuration for improved API security ([65ad23a](https://github.com/Megidy/BestLviv2026Test/commit/65ad23acb2da930930add4f832757a09419a7b8a))
+
 ## [0.1.4](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.3...v0.1.4) (2026-04-04)
 
 
