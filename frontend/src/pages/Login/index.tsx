@@ -1,5 +1,7 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
+import { apiClient } from '@/shared/api';
 import { Button } from '@/shared/ui/Button';
 import {
   Card,
@@ -11,6 +13,30 @@ import {
 import { Input } from '@/shared/ui/Input';
 
 export function LoginPage() {
+  const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const resp = await apiClient<{ data: string }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+      });
+      localStorage.setItem('token', resp.data);
+      navigate('/dashboard');
+    } catch {
+      setError('Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-10 text-text">
       <div className="w-full max-w-md animate-slide-up">
@@ -29,22 +55,40 @@ export function LoginPage() {
               Enter your credentials to access the operations hub.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm text-text-muted" htmlFor="login-email">
-                Email
-              </label>
-              <Input placeholder="name@company.com" type="email" id="login-email" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm text-text-muted" htmlFor="login-password">
-                Password
-              </label>
-              <Input placeholder="••••••••" type="password" id="login-password" />
-            </div>
-            <Button asChild className="w-full">
-              <Link to="/dashboard">Continue</Link>
-            </Button>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm text-text-muted" htmlFor="login-username">
+                  Username
+                </label>
+                <Input
+                  id="login-username"
+                  placeholder="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-text-muted" htmlFor="login-password">
+                  Password
+                </label>
+                <Input
+                  id="login-password"
+                  placeholder="••••••••"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              {error && (
+                <p className="text-sm text-danger">{error}</p>
+              )}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Signing in…' : 'Continue'}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>
