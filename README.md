@@ -4,7 +4,9 @@
 
 LogySync is a full-stack humanitarian logistics system built for crisis-zone supply chain management. It combines real-time inventory tracking, role-based dispatch workflows, a live geospatial map, and a proactive AI engine that detects demand surges hours before stock runs out — then automatically proposes an optimised resupply plan.
 
-**Live deployment:** `http://ec2-56-228-1-130.eu-north-1.compute.amazonaws.com:8080`
+**Live deployment:** 
+- API: https://api.logysinc.systems/swagger/index.html
+- Vercel: https://best-lviv2026-test.vercel.app
 
 ---
 
