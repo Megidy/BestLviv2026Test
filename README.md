@@ -13,7 +13,22 @@
 
 Logisync is a full-stack humanitarian logistics system built for crisis-zone supply chain management. It combines real-time inventory tracking, role-based dispatch workflows, a live geospatial map, and a proactive AI engine that detects demand surges hours before stock runs out — then automatically proposes an optimised resupply plan.
 
-**Live deployment:** `http://ec2-56-228-1-130.eu-north-1.compute.amazonaws.com:8080`
+**Live deployment:** 
+- API: https://api.logysinc.systems/swagger/index.html
+- Vercel: https://best-lviv2026-test.vercel.app
+
+## Demo Credentials
+
+
+| Username | Password | Role | Warehouse |
+|---|---|---|---|
+| `admin_w1` | password123 | Admin | Kyiv Central |
+| `dispatcher_w1` | password | Dispatcher | Kyiv Central |
+| `worker1_w1` | password | Worker | Kyiv Central |
+| `admin_w3` | password | Admin | Kharkiv Main |
+| `dispatcher_w5` | password | Dispatcher | Dnipro Industrial |
+
+Full matrix: `admin_w1`–`admin_w20`, `dispatcher_w1`–`dispatcher_w20`, `worker1_w1`–`worker1_w20` (one per warehouse).
 
 ---
 
