@@ -74,6 +74,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   int _requestQuantity = 100;
   int _navIndex = 0;
   AppScreen _detailBackScreen = AppScreen.home;
+  int? _mapFocusPointId;
 
   bool _isRestoringSession = true;
   bool _isAuthenticating = false;
@@ -462,6 +463,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _currentScreen = AppScreen.login;
     _navIndex = 0;
     _detailBackScreen = AppScreen.home;
+    _mapFocusPointId = null;
     _isRestoringSession = false;
     _isAuthenticating = false;
     _isRefreshingData = false;
@@ -773,6 +775,44 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _proposalIdController.text = proposalId.toString();
     _goTo(AppScreen.rebalancingProposals);
     await _loadRebalancingProposal();
+  }
+
+  int? _resolveMapFocusPointId(PredictiveAlert alert) {
+    final directId = alert.pointId;
+    if (directId != null && directId > 0) {
+      return directId;
+    }
+
+    final locationLabel = alert.locationLabel.trim().toLowerCase();
+    if (locationLabel.isEmpty) {
+      return null;
+    }
+
+    for (final point in _mapPoints) {
+      if (point.name.trim().toLowerCase() == locationLabel) {
+        return point.id;
+      }
+    }
+    for (final point in _mapPoints) {
+      final normalizedName = point.name.trim().toLowerCase();
+      if (normalizedName.contains(locationLabel) ||
+          locationLabel.contains(normalizedName)) {
+        return point.id;
+      }
+    }
+    return null;
+  }
+
+  void _openMapScreen({
+    int? focusPointId,
+  }) {
+    _mapFocusPointId = focusPointId;
+    _goTo(AppScreen.map);
+  }
+
+  void _openMapFromAlert(PredictiveAlert alert) {
+    final focusPointId = _resolveMapFocusPointId(alert);
+    _openMapScreen(focusPointId: focusPointId);
   }
 
   void _openStockNearest() {
@@ -1317,11 +1357,15 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   }
 
   void _handleNavigation(int index) {
+    if (index == 3) {
+      _openMapScreen();
+      return;
+    }
+
     final screen = switch (index) {
       0 => AppScreen.home,
       1 => AppScreen.inventory,
       2 => AppScreen.scanner,
-      3 => AppScreen.map,
       4 => AppScreen.settings,
       _ => AppScreen.home,
     };
@@ -1403,7 +1447,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   isBusy: _isRunningAlertAction || _isRefreshingData,
                   onDismissAlert: (alert) => _dismissAlert(alert),
                   onOpenProposal: (alert) => _openProposalFromAlert(alert),
-                  onOpenMap: (_) => _goTo(AppScreen.map),
+                  onOpenMap: (alert) => _openMapFromAlert(alert),
                   onRefresh: () => _refreshCoreData(),
                   onBack: () => _goTo(AppScreen.home),
                 ),
@@ -1573,6 +1617,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                 ),
               AppScreen.map => MapScreen(
                   points: _mapPoints,
+                  initialFocusPointId: _mapFocusPointId,
                   onBack: () => _goTo(AppScreen.home),
                 ),
               AppScreen.settings => SettingsScreen(

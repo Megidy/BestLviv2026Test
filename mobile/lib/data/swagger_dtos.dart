@@ -92,6 +92,7 @@ class PredictiveAlertDto {
     required this.locationLabel,
     required this.severity,
     required this.updatedAt,
+    this.pointId,
     this.predictedShortfallAt,
     this.confidence,
     this.proposalId,
@@ -102,6 +103,7 @@ class PredictiveAlertDto {
   final String locationLabel;
   final String severity;
   final DateTime? updatedAt;
+  final int? pointId;
   final DateTime? predictedShortfallAt;
   final num? confidence;
   final int? proposalId;
@@ -109,6 +111,16 @@ class PredictiveAlertDto {
   factory PredictiveAlertDto.fromMap(Map<String, dynamic> map) {
     final resource = DtoRead.asMap(map['resource']);
     final point = DtoRead.asMap(map['point']);
+    final pointIdRaw = DtoRead.readInt(
+      point,
+      const ['id', 'point_id'],
+      defaultValue: DtoRead.readInt(
+        map,
+        const ['point_id', 'delivery_point_id', 'target_point_id'],
+        defaultValue: 0,
+      ),
+    );
+    final pointId = pointIdRaw > 0 ? pointIdRaw : null;
 
     final id = DtoRead.readInt(map, const ['id']);
     final resourceName = DtoRead.readString(
@@ -163,6 +175,7 @@ class PredictiveAlertDto {
         ],
       ),
       confidence: confidence,
+      pointId: pointId,
       proposalId: proposalId,
     );
   }
