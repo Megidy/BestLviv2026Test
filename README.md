@@ -1,5 +1,7 @@
 # Logisync — AI-Powered Humanitarian Logistics Platform
 
+## Both Mobile (IOS + Android) and Web application
+
 > Predict shortages before they happen. Dispatch the right resources from the right warehouse in one tap.
 
 Logisync is a full-stack humanitarian logistics system built for crisis-zone supply chain management. It combines real-time inventory tracking, role-based dispatch workflows, a live geospatial map, and a proactive AI engine that detects demand surges hours before stock runs out — then automatically proposes an optimised resupply plan.
@@ -60,7 +62,34 @@ Clicking a pin opens a detail panel with current inventory levels and active ale
 
 ---
 
-### 3. Real-Time Inventory
+### 3. Offline-First
+
+An Offline-First approach used in both Web and Mobile applications.
+
+- **Status** - Whenever you have an internet connection, you would have a status online.
+- **Offline** - If you are offline, your status would change, you can still move around all pages, but only cached data will be live.
+- **Sync** - The second you are online, all changes will be synced and fetched.
+
+---
+### 4. Mobile App (Flutter)
+
+A dedicated Flutter application for warehouse workers operating in the field — designed around the brief's explicit requirement for warehouse usability. Also, offline-first.
+
+Key design constraints:
+- **Min 48×48px tap targets** — works with gloves
+- **16sp+ font size** — readable in poor warehouse lighting
+- **High-contrast dark theme** — visible in direct sunlight
+- **Bottom navigation** — thumb-reachable on large phones
+
+**QR scanning workflow:** Every resource shelf has a printed QR label encoding `RESOURCE:{id}:POINT:{id}`. Worker taps Scan → camera decodes → Quick Action screen appears with current stock. Three actions: update demand, flag urgent, confirm delivery. Two taps from scan to action — no searching, no typing.
+
+A demand update recorded on the phone triggers the AI analysis immediately in the backend. An alert can appear on the dispatcher's desktop within seconds of the scan — demonstrable in real time.
+
+**Platform:** Android + iOS from a single Dart codebase.
+
+---
+
+### 5. Real-Time Inventory
 
 Every warehouse tracks stock per resource across 30 resource types (food, medical, fuel, electronics, clothing, building materials). Inventory is searchable by name and filterable by category. Safe-stock thresholds are calculated automatically (20% of quantity) and highlighted visually.
 
@@ -68,7 +97,7 @@ Workers see only their own warehouse. Dispatchers and admins see all locations.
 
 ---
 
-### 4. End-to-End Delivery Workflow
+### 6. End-to-End Delivery Workflow
 
 Full request lifecycle with status state machine:
 
@@ -86,13 +115,13 @@ Dispatchers inherit all worker capabilities. Admins inherit all dispatcher and w
 
 ---
 
-### 5. Allocation Management
+### 7. Allocation Management
 
 The allocations page gives dispatchers a full view of all planned transfers with approve, reject, and dispatch actions. Each allocation shows the source warehouse name, resource name, quantity, and current status. Bulk approval is also available per-request.
 
 ---
 
-### 6. Role-Based Access Control
+### 8. Role-Based Access Control
 
 Three roles with strict enforcement at both the API and UI layers:
 
@@ -106,29 +135,14 @@ JWT tokens carry the role claim. UI hides inaccessible nav items and action butt
 
 ---
 
-### 7. Audit Log
+### 9. Audit Log
 
 Every delivery action (create, allocate, approve, dispatch, deliver, cancel) is written to an append-only audit table with actor ID, role, action type, entity, before/after values, IP address, and timestamp. Accessible to admins via the Admin panel with full-text search.
 
 ---
 
-### 8. Mobile App (Flutter)
 
-A dedicated Flutter application for warehouse workers operating in the field — designed around the brief's explicit requirement for warehouse usability.
-
-Key design constraints:
-- **Min 48×48px tap targets** — works with gloves
-- **16sp+ font size** — readable in poor warehouse lighting
-- **High-contrast dark theme** — visible in direct sunlight
-- **Bottom navigation** — thumb-reachable on large phones
-
-**QR scanning workflow:** Every resource shelf has a printed QR label encoding `RESOURCE:{id}:POINT:{id}`. Worker taps Scan → camera decodes → Quick Action screen appears with current stock. Three actions: update demand, flag urgent, confirm delivery. Two taps from scan to action — no searching, no typing.
-
-A demand update recorded on the phone triggers the AI analysis immediately in the backend. An alert can appear on the dispatcher's desktop within seconds of the scan — demonstrable in real time.
-
-**Platform:** Android + iOS from a single Dart codebase.
-
-### 9. Dashboard
+### 10. Dashboard
 
 At-a-glance operations summary: total inventory value, active alert count, pending request count, recent allocation status. Data is pulled live from the same API endpoints.
 
