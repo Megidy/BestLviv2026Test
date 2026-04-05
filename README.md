@@ -7,6 +7,11 @@
 
 # Logisync — AI-Powered Humanitarian Logistics Platform
 
+[![Backend CD](https://github.com/Megidy/BestLviv2026Test/actions/workflows/backend-cd.yml/badge.svg?branch=main)](https://github.com/Megidy/BestLviv2026Test/actions/workflows/backend-cd.yml)
+[![Mobile CD](https://github.com/Megidy/BestLviv2026Test/actions/workflows/mobile-cd.yml/badge.svg)](https://github.com/Megidy/BestLviv2026Test/actions/workflows/mobile-cd.yml)
+[![Release](https://github.com/Megidy/BestLviv2026Test/actions/workflows/release.yml/badge.svg)](https://github.com/Megidy/BestLviv2026Test/actions/workflows/release.yml)
+
+
 ## Both Mobile (IOS + Android) and Web application
 
 > Predict shortages before they happen. Dispatch the right resources from the right warehouse in one tap.
