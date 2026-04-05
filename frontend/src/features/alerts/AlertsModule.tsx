@@ -26,7 +26,7 @@ import {
 
 export function AlertsModule() {
   const { user } = useAuth();
-  const { alerts, proposals, isLoading, isMutating, error, loadProposal, dismissAlert, approveProposal, dismissProposal, runAi } =
+  const { alerts, proposals, isLoading, isMutating, error, notice, pendingActionKeys, loadProposal, dismissAlert, approveProposal, dismissProposal, runAi } =
     useAlerts();
   const { points } = useMap();
   const { items } = useInventory({
@@ -67,6 +67,12 @@ export function AlertsModule() {
         </Button>
       </div>
 
+      {notice ? (
+        <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-sm text-warning">
+          {notice}
+        </div>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Alert queue</CardTitle>
@@ -83,11 +89,26 @@ export function AlertsModule() {
             ) : (
               alerts.map((alert) => {
                 const isExpanded = expandedAlertId === alert.id;
+                const canResolveAlert = alert.status === 'open';
+                const canApproveProposal = Boolean(
+                  alert.proposal_id &&
+                    canResolveAlert &&
+                    proposals[alert.proposal_id]?.status !== 'approved' &&
+                    proposals[alert.proposal_id]?.status !== 'dismissed',
+                );
+                const canDismissProposal = Boolean(
+                  alert.proposal_id &&
+                    canResolveAlert &&
+                    proposals[alert.proposal_id]?.status !== 'dismissed' &&
+                    proposals[alert.proposal_id]?.status !== 'approved',
+                );
 
                 return (
                   <div
                     key={alert.id}
-                    className="rounded-xl border border-border bg-surface/50 p-4"
+                    className={`rounded-xl border border-border bg-surface/50 p-4 ${
+                      canResolveAlert ? '' : 'opacity-60'
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -127,46 +148,63 @@ export function AlertsModule() {
                     ) : null}
 
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={async () => {
-                          if (alert.proposal_id) await loadProposal(alert.proposal_id);
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            if (alert.proposal_id) await loadProposal(alert.proposal_id);
                           setExpandedAlertId((cur) => cur === alert.id ? null : alert.id);
                         }}
                       >
                         {isExpanded ? 'Collapse' : 'Details'}
                       </Button>
-                      {alert.proposal_id ? (
+                      {canApproveProposal ? (
                         <>
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={isMutating}
+                            disabled={Boolean(
+                              pendingActionKeys[`approve-proposal:${alert.proposal_id}`],
+                            )}
                             className="border-success/50 text-success hover:bg-success/10 hover:border-success"
                             onClick={() => void approveProposal(alert.proposal_id!)}
                           >
-                            Approve
+                            {pendingActionKeys[`approve-proposal:${alert.proposal_id}`]
+                              ? 'Approving…'
+                              : 'Approve'}
                           </Button>
+                        </>
+                      ) : null}
+                      {canDismissProposal ? (
+                        <>
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={isMutating}
+                            disabled={Boolean(
+                              pendingActionKeys[`dismiss-proposal:${alert.proposal_id}`],
+                            )}
                             className="border-danger/50 text-danger hover:bg-danger/10 hover:border-danger"
                             onClick={() => void dismissProposal(alert.proposal_id!)}
                           >
-                            Reject
+                            {pendingActionKeys[`dismiss-proposal:${alert.proposal_id}`]
+                              ? 'Rejecting…'
+                              : 'Reject'}
                           </Button>
                         </>
                       ) : null}
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={isMutating}
+                        disabled={
+                          !canResolveAlert ||
+                          Boolean(pendingActionKeys[`dismiss-alert:${alert.id}`])
+                        }
                         className="border-warning/50 text-warning hover:bg-warning/10 hover:border-warning"
                         onClick={() => void dismissAlert(alert.id)}
                       >
-                        Dismiss
+                        {pendingActionKeys[`dismiss-alert:${alert.id}`]
+                          ? 'Dismissing…'
+                          : 'Dismiss'}
                       </Button>
                       <Button asChild size="sm" variant="outline">
                         <Link to={`/map?focusId=${alert.point_id}&focusType=customer`}>
@@ -223,15 +261,15 @@ export function AlertsModule() {
                     return (
                       <AlertRow
                         key={alert.id}
-                        alert={alert}
-                        proposal={proposal}
-                        expanded={expandedAlertId === alert.id}
-                        pointNameById={pointNameById}
-                        resourceNameById={resourceNameById}
-                        isMutating={isMutating}
-                        onToggleExpand={async (selectedAlert) => {
-                          if (selectedAlert.proposal_id) {
-                            await loadProposal(selectedAlert.proposal_id);
+                      alert={alert}
+                      proposal={proposal}
+                      expanded={expandedAlertId === alert.id}
+                      pointNameById={pointNameById}
+                      resourceNameById={resourceNameById}
+                      pendingActionKeys={pendingActionKeys}
+                      onToggleExpand={async (selectedAlert) => {
+                        if (selectedAlert.proposal_id) {
+                          await loadProposal(selectedAlert.proposal_id);
                           }
                           setExpandedAlertId((current: number | null) =>
                             current === selectedAlert.id ? null : selectedAlert.id,

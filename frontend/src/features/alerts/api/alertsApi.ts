@@ -1,4 +1,5 @@
 import {
+  ApiError,
   endpoints,
   request,
   unwrapApiResponse,
@@ -24,6 +25,21 @@ export type AlertReasoning = {
 export type AlertWithReasoning = PredictiveAlert & {
   reasoning: AlertReasoning;
 };
+
+export class AlertsConflictError extends Error {
+  constructor(message = 'This alert has already been resolved') {
+    super(message);
+    this.name = 'AlertsConflictError';
+  }
+}
+
+function mapAlertsApiError(caught: unknown): never {
+  if (caught instanceof ApiError && caught.statusCode === 409) {
+    throw new AlertsConflictError();
+  }
+
+  throw caught;
+}
 
 function normalizeSentence(value: string | null | undefined) {
   const normalized = value?.replace(/\s+/g, ' ').trim();
@@ -137,9 +153,13 @@ export async function getAlerts(page: number, pageSize: number) {
 }
 
 export async function dismissAlert(alertId: number) {
-  await request<ApiResponse<null>>(endpoints.alerts.dismiss(alertId), {
-    method: 'POST',
-  });
+  try {
+    await request<ApiResponse<null>>(endpoints.alerts.dismiss(alertId), {
+      method: 'POST',
+    });
+  } catch (caught) {
+    mapAlertsApiError(caught);
+  }
 }
 
 export async function getProposal(proposalId: number) {
@@ -159,28 +179,36 @@ export async function getProposal(proposalId: number) {
 }
 
 export async function approveProposal(proposalId: number) {
-  const response = await request<ApiResponse<RebalancingProposal>>(
-    endpoints.proposals.approve(proposalId),
-    {
-      method: 'POST',
-    },
-  );
+  try {
+    const response = await request<ApiResponse<RebalancingProposal>>(
+      endpoints.proposals.approve(proposalId),
+      {
+        method: 'POST',
+      },
+    );
 
-  const proposal = unwrapApiResponse(response);
-  if (!proposal) {
-    throw new Error('Proposal response is empty');
+    const proposal = unwrapApiResponse(response);
+    if (!proposal) {
+      throw new Error('Proposal response is empty');
+    }
+
+    return {
+      ...proposal,
+      transfers: Array.isArray(proposal?.transfers) ? proposal.transfers : [],
+    };
+  } catch (caught) {
+    mapAlertsApiError(caught);
   }
-
-  return {
-    ...proposal,
-    transfers: Array.isArray(proposal?.transfers) ? proposal.transfers : [],
-  };
 }
 
 export async function rejectProposal(proposalId: number) {
-  await request<ApiResponse<null>>(endpoints.proposals.dismiss(proposalId), {
-    method: 'POST',
-  });
+  try {
+    await request<ApiResponse<null>>(endpoints.proposals.dismiss(proposalId), {
+      method: 'POST',
+    });
+  } catch (caught) {
+    mapAlertsApiError(caught);
+  }
 }
 
 export async function runAi() {

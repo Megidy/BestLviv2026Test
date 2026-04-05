@@ -26,7 +26,7 @@ type AlertRowProps = {
   expanded: boolean;
   pointNameById: Record<number, string>;
   resourceNameById: Record<number, string>;
-  isMutating: boolean;
+  pendingActionKeys: Record<string, boolean>;
   onToggleExpand: (alert: AlertWithReasoning) => Promise<void>;
   onApproveProposal: (proposalId: number) => void;
   onDismissProposal: (proposalId: number) => void;
@@ -47,16 +47,33 @@ export function AlertRow({
   expanded,
   pointNameById,
   resourceNameById,
-  isMutating,
+  pendingActionKeys,
   onToggleExpand,
   onApproveProposal,
   onDismissProposal,
   onDismissAlert,
 }: AlertRowProps) {
+  const canResolveAlert = alert.status === 'open';
+  const canApproveProposal =
+    canResolveAlert && alert.proposal_id !== undefined && proposal?.status !== 'approved' && proposal?.status !== 'dismissed';
+  const canDismissProposal =
+    canResolveAlert && alert.proposal_id !== undefined && proposal?.status !== 'dismissed' && proposal?.status !== 'approved';
+  const isApprovePending = Boolean(
+    pendingActionKeys[`approve-proposal:${alert.proposal_id ?? ''}`],
+  );
+  const isDismissProposalPending = Boolean(
+    pendingActionKeys[`dismiss-proposal:${alert.proposal_id ?? ''}`],
+  );
+  const isDismissAlertPending = Boolean(
+    pendingActionKeys[`dismiss-alert:${alert.id}`],
+  );
+
   return (
     <Fragment key={alert.id}>
       <TableRow
-        className="cursor-pointer hover:bg-accent/60"
+        className={`cursor-pointer hover:bg-accent/60 ${
+          alert.status !== 'open' ? 'opacity-60' : ''
+        }`}
         onClick={() => {
           void onToggleExpand(alert);
         }}
@@ -81,42 +98,50 @@ export function AlertRow({
             <Badge tone="info">{formatPercent(alert.confidence)} confidence</Badge>
           </div>
         </TableCell>
-        <TableCell className="text-text-muted">{alert.status}</TableCell>
+        <TableCell className="text-text-muted">
+          <Badge tone={alert.status === 'resolved' ? 'neutral' : 'info'}>
+            {alert.status}
+          </Badge>
+        </TableCell>
         <TableCell>
           <div
             className="flex justify-end gap-2"
             onClick={(event) => event.stopPropagation()}
           >
-            {alert.proposal_id ? (
+            {alert.proposal_id && canApproveProposal ? (
               <>
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={isMutating}
+                  disabled={isApprovePending}
                   className="border-success/50 text-success hover:bg-success/10 hover:border-success"
                   onClick={() => onApproveProposal(alert.proposal_id!)}
                 >
-                  Approve
+                  {isApprovePending ? 'Approving…' : 'Approve'}
                 </Button>
+              </>
+            ) : null}
+            {alert.proposal_id && canDismissProposal ? (
+              <>
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={isMutating}
+                  disabled={isDismissProposalPending}
                   className="border-danger/50 text-danger hover:bg-danger/10 hover:border-danger"
                   onClick={() => onDismissProposal(alert.proposal_id!)}
                 >
-                  Reject
+                  {isDismissProposalPending ? 'Rejecting…' : 'Reject'}
                 </Button>
               </>
             ) : null}
             <Button
               size="sm"
               variant="outline"
-              disabled={isMutating}
+              disabled={isDismissAlertPending || !canResolveAlert}
               className="border-warning/50 text-warning hover:bg-warning/10 hover:border-warning"
               onClick={() => onDismissAlert(alert.id)}
             >
-              Dismiss
+              {isDismissAlertPending ? 'Dismissing…' : 'Dismiss'}
             </Button>
             <Button asChild size="sm" variant="outline">
               <Link to={`/map?focusId=${alert.point_id}&focusType=customer`}><Map size={15} /></Link>
@@ -159,6 +184,7 @@ export function AlertRow({
                 <Badge tone={alertTone(alert)}>
                   Confidence {formatPercent(alert.confidence)}
                 </Badge>
+                {alert.status !== 'open' ? <Badge tone="neutral">Resolved</Badge> : null}
                 <span className="text-sm text-text-muted">
                   Suggested action: {renderSuggestedAction(alert.reasoning, proposal)}
                 </span>
