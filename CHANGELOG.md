@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.12...v0.1.13) (2026-04-05)
+
+
+### Bug Fixes
+
+* mobile cd ([f97e3f3](https://github.com/Megidy/BestLviv2026Test/commit/f97e3f35e683f32ac219d1f17ab9a235f16da5bc))
+
 ## [0.1.12](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.11...v0.1.12) (2026-04-05)
 
 
