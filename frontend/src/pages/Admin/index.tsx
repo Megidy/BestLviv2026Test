@@ -92,64 +92,122 @@ export function AdminPage() {
           <CardTitle>Audit log</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Entity type</TableHead>
-                <TableHead>Entity ID</TableHead>
-                <TableHead>Before</TableHead>
-                <TableHead>After</TableHead>
-                <TableHead className="text-right">Timestamp</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
+          {/* Mobile card list — hidden on lg+ */}
+          <div className="space-y-3 lg:hidden">
+            {isLoading ? (
+              <p className="py-10 text-center text-sm text-text-muted">Loading audit log…</p>
+            ) : error ? (
+              <p className="py-10 text-center text-sm text-danger">{error}</p>
+            ) : filteredEntries.length === 0 ? (
+              <p className="py-10 text-center text-sm text-text-muted">No audit entries match the current search.</p>
+            ) : (
+              filteredEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-xl border border-border bg-surface/50 p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text">
+                        {entry.actor_id ? `User #${entry.actor_id}` : 'System'}
+                      </p>
+                      <p className="mt-0.5 text-xs capitalize text-text-muted">{entry.actor_role}</p>
+                    </div>
+                    <span className="shrink-0 rounded-lg border border-border px-2 py-0.5 text-xs text-text-muted">
+                      {entry.action}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <p className="text-text-muted">Entity type</p>
+                      <p className="mt-0.5 text-text">{entry.entity_type ?? 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted">Entity ID</p>
+                      <p className="mt-0.5 text-text">{entry.entity_id ?? 'N/A'}</p>
+                    </div>
+                    {entry.before_value ? (
+                      <div className="col-span-2">
+                        <p className="text-text-muted">Before</p>
+                        <p className="mt-0.5 truncate text-text">{entry.before_value}</p>
+                      </div>
+                    ) : null}
+                    {entry.after_value ? (
+                      <div className="col-span-2">
+                        <p className="text-text-muted">After</p>
+                        <p className="mt-0.5 truncate text-text">{entry.after_value}</p>
+                      </div>
+                    ) : null}
+                    <div className="col-span-2">
+                      <p className="text-text-muted">Timestamp</p>
+                      <p className="mt-0.5 text-text">{formatDateTime(entry.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop table — hidden on mobile/tablet */}
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell className="py-10 text-center text-text-muted" colSpan={8}>
-                    Loading audit log…
-                  </TableCell>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Entity type</TableHead>
+                  <TableHead>Entity ID</TableHead>
+                  <TableHead>Before</TableHead>
+                  <TableHead>After</TableHead>
+                  <TableHead className="text-right">Timestamp</TableHead>
                 </TableRow>
-              ) : error ? (
-                <TableRow>
-                  <TableCell className="py-10 text-center text-danger" colSpan={8}>
-                    {error}
-                  </TableCell>
-                </TableRow>
-              ) : filteredEntries.length === 0 ? (
-                <TableRow>
-                  <TableCell className="py-10 text-center text-text-muted" colSpan={8}>
-                    No audit entries match the current search.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredEntries.map((entry) => (
-                <TableRow key={entry.id} className="hover:bg-accent/60">
-                  <TableCell className="font-medium">
-                    {entry.actor_id ? `User #${entry.actor_id}` : 'System'}
-                  </TableCell>
-                  <TableCell className="text-text-muted">
-                    {entry.actor_role}
-                  </TableCell>
-                  <TableCell>{entry.action}</TableCell>
-                  <TableCell>{entry.entity_type ?? 'N/A'}</TableCell>
-                  <TableCell>{entry.entity_id ?? 'N/A'}</TableCell>
-                  <TableCell className="max-w-48 truncate text-text-muted">
-                    {entry.before_value ?? 'N/A'}
-                  </TableCell>
-                  <TableCell className="max-w-48 truncate">
-                    {entry.after_value ?? 'N/A'}
-                  </TableCell>
-                  <TableCell className="text-right text-text-muted">
-                    {formatDateTime(entry.created_at)}
-                  </TableCell>
-                </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-text-muted" colSpan={8}>
+                      Loading audit log…
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-danger" colSpan={8}>
+                      {error}
+                    </TableCell>
+                  </TableRow>
+                ) : filteredEntries.length === 0 ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-text-muted" colSpan={8}>
+                      No audit entries match the current search.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredEntries.map((entry) => (
+                    <TableRow key={entry.id} className="hover:bg-accent/60">
+                      <TableCell className="font-medium">
+                        {entry.actor_id ? `User #${entry.actor_id}` : 'System'}
+                      </TableCell>
+                      <TableCell className="text-text-muted">{entry.actor_role}</TableCell>
+                      <TableCell>{entry.action}</TableCell>
+                      <TableCell>{entry.entity_type ?? 'N/A'}</TableCell>
+                      <TableCell>{entry.entity_id ?? 'N/A'}</TableCell>
+                      <TableCell className="max-w-48 truncate text-text-muted">
+                        {entry.before_value ?? 'N/A'}
+                      </TableCell>
+                      <TableCell className="max-w-48 truncate">
+                        {entry.after_value ?? 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-right text-text-muted">
+                        {formatDateTime(entry.created_at)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

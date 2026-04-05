@@ -97,6 +97,11 @@ export async function request<T>(
 
   if (!response.ok) {
     const metadata = isApiResponse(parsed) ? parsed.metadata : undefined;
+
+    if (response.status === 401) {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+    }
+
     throw new ApiError(
       metadata?.error ?? metadata?.message ?? 'Request failed',
       response.status,
