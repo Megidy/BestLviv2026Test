@@ -7,6 +7,7 @@ import '../widgets/common.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
+    required this.actorRole,
     required this.queue,
     required this.navIndex,
     required this.locationLabel,
@@ -26,6 +27,7 @@ class HomeScreen extends StatelessWidget {
     required this.onNavigate,
   });
 
+  final UserRole actorRole;
   final List<QueueItem> queue;
   final int navIndex;
   final String locationLabel;
@@ -47,6 +49,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final canUseRebalancing = actorRole == UserRole.dispatcher;
     return Column(
       children: [
         Expanded(
@@ -145,13 +148,15 @@ class HomeScreen extends StatelessWidget {
                   leadingIcon: Icons.insights_outlined,
                   onTap: onDemandReadingsTap,
                 ),
-                const SizedBox(height: 10),
-                ActionBanner(
-                  title: 'Rebalancing Proposals',
-                  subtitle: 'Review and apply AI redistribution plans',
-                  leadingIcon: Icons.auto_graph_rounded,
-                  onTap: onRebalancingTap,
-                ),
+                if (canUseRebalancing) ...[
+                  const SizedBox(height: 10),
+                  ActionBanner(
+                    title: 'Rebalancing Proposals',
+                    subtitle: 'Review and apply AI redistribution plans',
+                    leadingIcon: Icons.auto_graph_rounded,
+                    onTap: onRebalancingTap,
+                  ),
+                ],
                 const SizedBox(height: 10),
                 ActionBanner(
                   title: 'Nearest Stock',

@@ -1,78 +1,89 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
-class DeliveryRequestsScreen extends StatelessWidget {
+class DeliveryRequestsScreen extends StatefulWidget {
   const DeliveryRequestsScreen({
     super.key,
+    required this.actorRole,
     required this.requests,
     required this.allocations,
     required this.totalRequests,
     required this.totalAllocations,
     required this.selectedRequestStatus,
-    required this.selectedRequestPriority,
     required this.selectedAllocationStatus,
-    required this.requestsPage,
-    required this.allocationsPage,
-    required this.requestsPageSize,
-    required this.allocationsPageSize,
     required this.isBusy,
     this.errorMessage,
     required this.onBack,
     required this.onRefresh,
     required this.onRequestStatusFilterChange,
-    required this.onRequestPriorityFilterChange,
     required this.onAllocationStatusFilterChange,
-    required this.onRequestsPageChange,
-    required this.onAllocationsPageChange,
     required this.onRunAllocate,
     required this.onOpenRequest,
   });
 
+  final UserRole actorRole;
   final List<DeliveryRequestSummary> requests;
   final List<AllocationRecord> allocations;
   final int totalRequests;
   final int totalAllocations;
   final String? selectedRequestStatus;
-  final String? selectedRequestPriority;
   final String? selectedAllocationStatus;
-  final int requestsPage;
-  final int allocationsPage;
-  final int requestsPageSize;
-  final int allocationsPageSize;
   final bool isBusy;
   final String? errorMessage;
   final VoidCallback onBack;
   final VoidCallback onRefresh;
   final ValueChanged<String?> onRequestStatusFilterChange;
-  final ValueChanged<String?> onRequestPriorityFilterChange;
   final ValueChanged<String?> onAllocationStatusFilterChange;
-  final ValueChanged<int> onRequestsPageChange;
-  final ValueChanged<int> onAllocationsPageChange;
   final VoidCallback onRunAllocate;
   final ValueChanged<DeliveryRequestSummary> onOpenRequest;
 
   @override
+  State<DeliveryRequestsScreen> createState() => _DeliveryRequestsScreenState();
+}
+
+enum _DeliverySection {
+  requests,
+  allocations,
+}
+
+class _DeliveryRequestsScreenState extends State<DeliveryRequestsScreen> {
+  _DeliverySection _activeSection = _DeliverySection.requests;
+
+  static const List<_StatusOption> _requestStatusOptions = [
+    _StatusOption(value: null, label: 'All'),
+    _StatusOption(value: 'pending', label: 'Pending'),
+    _StatusOption(value: 'allocated', label: 'Allocated'),
+    _StatusOption(value: 'in_transit', label: 'In transit'),
+    _StatusOption(value: 'delivered', label: 'Delivered'),
+    _StatusOption(value: 'cancelled', label: 'Cancelled'),
+  ];
+
+  static const List<_StatusOption> _allocationStatusOptions = [
+    _StatusOption(value: null, label: 'All'),
+    _StatusOption(value: 'planned', label: 'Planned'),
+    _StatusOption(value: 'approved', label: 'Approved'),
+    _StatusOption(value: 'in_transit', label: 'In transit'),
+    _StatusOption(value: 'delivered', label: 'Delivered'),
+    _StatusOption(value: 'cancelled', label: 'Cancelled'),
+  ];
+
+  bool get _showRequests => _activeSection == _DeliverySection.requests;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final pendingCount = requests
+    final pendingCount = widget.requests
         .where((request) => request.status == DeliveryRequestStatus.pending)
         .length;
-    final hasNextRequestsPage = requestsPage * requestsPageSize < totalRequests;
-    final hasNextAllocationsPage =
-      allocationsPage * allocationsPageSize < totalAllocations;
-    final requestRangeStart =
-      totalRequests == 0 ? 0 : ((requestsPage - 1) * requestsPageSize) + 1;
-    final requestRangeEnd = math.min(requestsPage * requestsPageSize, totalRequests);
-    final allocationRangeStart = totalAllocations == 0
-      ? 0
-      : ((allocationsPage - 1) * allocationsPageSize) + 1;
-    final allocationRangeEnd =
-      math.min(allocationsPage * allocationsPageSize, totalAllocations);
+
+    final listItems = _showRequests ? widget.requests.length : widget.allocations.length;
+    final selectedStatus =
+        _showRequests ? widget.selectedRequestStatus : widget.selectedAllocationStatus;
+    final filterOptions =
+        _showRequests ? _requestStatusOptions : _allocationStatusOptions;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
@@ -82,19 +93,20 @@ class DeliveryRequestsScreen extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                onPressed: onBack,
+                onPressed: widget.onBack,
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
               ),
               Expanded(
                 child: Text(
                   'DELIVERY REQUESTS',
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    letterSpacing: 1.2,
-                  ),
+                  style: theme.textTheme.labelLarge?.copyWith(letterSpacing: 1.2),
                 ),
               ),
-              const SizedBox(width: 48),
+              IconButton(
+                onPressed: widget.onRefresh,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -102,117 +114,59 @@ class DeliveryRequestsScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: DetailStatCard(
-                  label: 'TOTAL',
-                  value: totalRequests.toString(),
+                  label: 'Total',
+                  value: widget.totalRequests.toString(),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: DetailStatCard(
-                  label: 'PENDING',
+                  label: 'Pending',
                   value: pendingCount.toString(),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: DetailStatCard(
-                  label: 'ALLOCATIONS',
-                  value: totalAllocations.toString(),
+                  label: 'Alloc',
+                  value: widget.totalAllocations.toString(),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlineActionButton(
-                  label: 'Refresh',
-                  icon: Icons.refresh_rounded,
-                  onTap: onRefresh,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlineActionButton(
-                  label: 'Run Allocate',
-                  icon: Icons.hub_rounded,
-                  onTap: onRunAllocate,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          PanelCard(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'FILTERS',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    letterSpacing: 1,
-                    color: AppColors.softText,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    SizedBox(
-                      width: 190,
-                      child: _FilterDropdown(
-                        label: 'Request Status',
-                        value: selectedRequestStatus,
-                        items: const {
-                          'pending': 'Pending',
-                          'allocated': 'Allocated',
-                          'in_transit': 'In Transit',
-                          'delivered': 'Delivered',
-                          'cancelled': 'Cancelled',
-                        },
-                        onChanged: onRequestStatusFilterChange,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 190,
-                      child: _FilterDropdown(
-                        label: 'Request Priority',
-                        value: selectedRequestPriority,
-                        items: const {
-                          'urgent': 'Urgent',
-                          'critical': 'Critical',
-                          'elevated': 'Elevated',
-                          'normal': 'Normal',
-                        },
-                        onChanged: onRequestPriorityFilterChange,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 190,
-                      child: _FilterDropdown(
-                        label: 'Allocation Status',
-                        value: selectedAllocationStatus,
-                        items: const {
-                          'planned': 'Planned',
-                          'approved': 'Approved',
-                          'in_transit': 'In Transit',
-                          'delivered': 'Delivered',
-                          'cancelled': 'Cancelled',
-                        },
-                        onChanged: onAllocationStatusFilterChange,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          if (widget.actorRole == UserRole.dispatcher)
+            OutlineActionButton(
+              label: 'Run Allocate',
+              icon: Icons.hub_rounded,
+              onTap: widget.onRunAllocate,
+              fillWidth: true,
             ),
+          const SizedBox(height: 12),
+          _SectionSwitcher(
+            activeSection: _activeSection,
+            onChanged: (section) {
+              setState(() {
+                _activeSection = section;
+              });
+            },
           ),
-          if (errorMessage != null && errorMessage!.trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _StatusFilterRow(
+            selectedValue: selectedStatus,
+            options: filterOptions,
+            onChanged: (next) {
+              if (_showRequests) {
+                widget.onRequestStatusFilterChange(next);
+              } else {
+                widget.onAllocationStatusFilterChange(next);
+              }
+            },
+          ),
+          if (widget.errorMessage != null && widget.errorMessage!.trim().isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              errorMessage!,
+              widget.errorMessage!,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: AppColors.redAlert,
               ),
@@ -222,68 +176,34 @@ class DeliveryRequestsScreen extends StatelessWidget {
           Expanded(
             child: Stack(
               children: [
-                if (requests.isEmpty && allocations.isEmpty)
-                  const PanelCard(
-                    child: Text('No delivery requests or allocations returned from API.'),
+                if (listItems == 0)
+                  PanelCard(
+                    child: Text(
+                      _showRequests
+                          ? 'No delivery requests for selected filter.'
+                          : 'No allocations for selected filter.',
+                    ),
                   )
                 else
-                  ListView(
-                    children: [
-                      Text(
-                        'REQUESTS $requestRangeStart-$requestRangeEnd / $totalRequests',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: AppColors.softText,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (requests.isEmpty)
-                        const PanelCard(
-                          child: Text('No delivery requests for selected filters.'),
-                        )
-                      else
-                        ...requests.map(
-                          (request) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _DeliveryRequestTile(
-                              request: request,
-                              onTap: () => onOpenRequest(request),
-                            ),
-                          ),
-                        ),
-                      _PaginationRow(
-                        page: requestsPage,
-                        hasNextPage: hasNextRequestsPage,
-                        onPageChange: onRequestsPageChange,
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'ALLOCATIONS $allocationRangeStart-$allocationRangeEnd / $totalAllocations',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: AppColors.softText,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (allocations.isEmpty)
-                        const PanelCard(
-                          child: Text('No allocations for selected filters.'),
-                        )
-                      else
-                        ...allocations.map(
-                          (allocation) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _AllocationTile(allocation: allocation),
-                          ),
-                        ),
-                      _PaginationRow(
-                        page: allocationsPage,
-                        hasNextPage: hasNextAllocationsPage,
-                        onPageChange: onAllocationsPageChange,
-                      ),
-                    ],
+                  ListView.separated(
+                    itemCount: listItems,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      if (_showRequests) {
+                        final request = widget.requests[index];
+                        return _DeliveryRequestTile(
+                          request: request,
+                          onTap: () => widget.onOpenRequest(request),
+                        );
+                      }
+
+                      return _AllocationTile(
+                        allocation: widget.allocations[index],
+                      );
+                    },
                   ),
-                if (isBusy)
+                if (widget.isBusy)
                   const Positioned(
                     top: 0,
                     left: 0,
@@ -303,98 +223,156 @@ class DeliveryRequestsScreen extends StatelessWidget {
   }
 }
 
-class _FilterDropdown extends StatelessWidget {
-  const _FilterDropdown({
-    required this.label,
+class _StatusOption {
+  const _StatusOption({
     required this.value,
-    required this.items,
+    required this.label,
+  });
+
+  final String? value;
+  final String label;
+}
+
+class _SectionSwitcher extends StatelessWidget {
+  const _SectionSwitcher({
+    required this.activeSection,
     required this.onChanged,
   });
 
-  final String label;
-  final String? value;
-  final Map<String, String> items;
-  final ValueChanged<String?> onChanged;
-
-  static const String _allValue = '__all__';
+  final _DeliverySection activeSection;
+  final ValueChanged<_DeliverySection> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final selectedValue = value ?? _allValue;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: AppColors.softText),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: AppColors.panel,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.stroke),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: selectedValue,
-              isExpanded: true,
-              items: [
-                const DropdownMenuItem<String>(
-                  value: _allValue,
-                  child: Text('All'),
-                ),
-                ...items.entries.map(
-                  (entry) => DropdownMenuItem<String>(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  ),
-                ),
-              ],
-              onChanged: (next) {
-                if (next == null) {
-                  return;
-                }
-                onChanged(next == _allValue ? null : next);
-              },
+    return PanelCard(
+      padding: const EdgeInsets.all(6),
+      child: Row(
+        children: [
+          Expanded(
+            child: _SegmentButton(
+              label: 'Requests',
+              isSelected: activeSection == _DeliverySection.requests,
+              onTap: () => onChanged(_DeliverySection.requests),
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: _SegmentButton(
+              label: 'Allocations',
+              isSelected: activeSection == _DeliverySection.allocations,
+              onTap: () => onChanged(_DeliverySection.allocations),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _PaginationRow extends StatelessWidget {
-  const _PaginationRow({
-    required this.page,
-    required this.hasNextPage,
-    required this.onPageChange,
+class _SegmentButton extends StatelessWidget {
+  const _SegmentButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
   });
 
-  final int page;
-  final bool hasNextPage;
-  final ValueChanged<int> onPageChange;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: page > 1 ? () => onPageChange(page - 1) : null,
-          icon: const Icon(Icons.chevron_left_rounded),
+    final theme = Theme.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.mutedGold : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppColors.warmGold : AppColors.stroke,
+          ),
         ),
-        Text('Page $page'),
-        IconButton(
-          onPressed: hasNextPage ? () => onPageChange(page + 1) : null,
-          icon: const Icon(Icons.chevron_right_rounded),
+        child: Center(
+          child: Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: isSelected ? AppColors.creamText : AppColors.softText,
+            ),
+          ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _StatusFilterRow extends StatelessWidget {
+  const _StatusFilterRow({
+    required this.selectedValue,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String? selectedValue;
+  final List<_StatusOption> options;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: options.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final option = options[index];
+          return _StatusFilterChip(
+            label: option.label,
+            selected: selectedValue == option.value,
+            onTap: () => onChanged(option.value),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _StatusFilterChip extends StatelessWidget {
+  const _StatusFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.mutedGold : AppColors.panel,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AppColors.warmGold : AppColors.stroke,
+          ),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: selected ? AppColors.creamText : AppColors.softText,
+              ),
+        ),
+      ),
     );
   }
 }
@@ -424,35 +402,30 @@ class _AllocationTile extends StatelessWidget {
               const Spacer(),
               StatusPill(
                 label: allocation.statusLabel.toUpperCase(),
-                color: _statusColor(allocation.status),
+                color: _allocationStatusColor(allocation.status),
                 compact: true,
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            'Request #${allocation.requestId} • Qty ${allocation.quantity}',
-            style: theme.textTheme.bodyLarge?.copyWith(color: AppColors.creamText),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _InfoChip(label: 'Request #${allocation.requestId}'),
+              _InfoChip(label: 'Qty ${_formatQuantity(allocation.quantity)}'),
+              _InfoChip(label: 'WH ${allocation.sourceWarehouseId}'),
+              _InfoChip(label: 'Resource ${allocation.resourceId}'),
+            ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
-            'Warehouse ${allocation.sourceWarehouseId} • Resource ${allocation.resourceId}',
-            style: theme.textTheme.bodyMedium,
+            'Updated ${_formatDateTime(allocation.updatedAt ?? allocation.createdAt)}',
+            style: theme.textTheme.bodySmall?.copyWith(color: AppColors.softText),
           ),
         ],
       ),
     );
-  }
-
-  Color _statusColor(AllocationStatus status) {
-    return switch (status) {
-      AllocationStatus.planned => AppColors.amberWarn,
-      AllocationStatus.approved => AppColors.warmGold,
-      AllocationStatus.inTransit => AppColors.warmGold,
-      AllocationStatus.delivered => AppColors.greenOk,
-      AllocationStatus.cancelled => AppColors.redAlert,
-      AllocationStatus.unknown => AppColors.softText,
-    };
   }
 }
 
@@ -468,7 +441,6 @@ class _DeliveryRequestTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusColor = _statusColor(request.status);
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
@@ -485,44 +457,111 @@ class _DeliveryRequestTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  'REQ #${request.id}',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('REQ #${request.id}', style: theme.textTheme.titleMedium),
                 const Spacer(),
                 StatusPill(
                   label: request.statusLabel.toUpperCase(),
-                  color: statusColor,
+                  color: _requestStatusColor(request.status),
                   compact: true,
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              'Resource ${request.resourceId} • Qty ${request.quantity}',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: AppColors.creamText,
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _InfoChip(label: 'Priority ${request.priorityLabel}'),
+                _InfoChip(label: 'Qty ${_formatQuantity(request.quantity)}'),
+                _InfoChip(label: 'Resource ${request.resourceId}'),
+                _InfoChip(label: 'Destination ${request.destinationId}'),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Priority ${request.priorityLabel} • Destination ${request.destinationId}',
-              style: theme.textTheme.bodyMedium,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Updated ${_formatDateTime(request.updatedAt ?? request.createdAt)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.softText,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.softText,
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Color _statusColor(DeliveryRequestStatus status) {
-    return switch (status) {
-      DeliveryRequestStatus.pending => AppColors.amberWarn,
-      DeliveryRequestStatus.allocated => AppColors.warmGold,
-      DeliveryRequestStatus.inTransit => AppColors.warmGold,
-      DeliveryRequestStatus.delivered => AppColors.greenOk,
-      DeliveryRequestStatus.cancelled => AppColors.redAlert,
-      DeliveryRequestStatus.unknown => AppColors.softText,
-    };
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.canvas.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.creamText,
+            ),
+      ),
+    );
   }
+}
+
+Color _requestStatusColor(DeliveryRequestStatus status) {
+  return switch (status) {
+    DeliveryRequestStatus.pending => AppColors.amberWarn,
+    DeliveryRequestStatus.allocated => AppColors.warmGold,
+    DeliveryRequestStatus.inTransit => AppColors.warmGold,
+    DeliveryRequestStatus.delivered => AppColors.greenOk,
+    DeliveryRequestStatus.cancelled => AppColors.redAlert,
+    DeliveryRequestStatus.unknown => AppColors.softText,
+  };
+}
+
+Color _allocationStatusColor(AllocationStatus status) {
+  return switch (status) {
+    AllocationStatus.planned => AppColors.amberWarn,
+    AllocationStatus.approved => AppColors.warmGold,
+    AllocationStatus.inTransit => AppColors.warmGold,
+    AllocationStatus.delivered => AppColors.greenOk,
+    AllocationStatus.cancelled => AppColors.redAlert,
+    AllocationStatus.unknown => AppColors.softText,
+  };
+}
+
+String _formatQuantity(num value) {
+  if (value % 1 == 0) {
+    return value.toInt().toString();
+  }
+  return value.toStringAsFixed(1);
+}
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) {
+    return 'n/a';
+  }
+  final local = value.toLocal();
+  final day = local.day.toString().padLeft(2, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '$day.$month $hour:$minute';
 }

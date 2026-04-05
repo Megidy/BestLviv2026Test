@@ -103,7 +103,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   int _deliveryRequestsTotal = 0;
   int _allocationsTotal = 0;
   String? _requestsStatusFilter;
-  String? _requestsPriorityFilter;
   String? _allocationsStatusFilter;
   int _requestsPage = 1;
   int _allocationsPage = 1;
@@ -490,7 +489,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _deliveryRequestsTotal = 0;
     _allocationsTotal = 0;
     _requestsStatusFilter = null;
-    _requestsPriorityFilter = null;
     _allocationsStatusFilter = null;
     _requestsPage = 1;
     _allocationsPage = 1;
@@ -976,11 +974,9 @@ class _TerminalExperienceState extends State<TerminalExperience> {
 
   Future<void> _setRequestFilters({
     String? status,
-    String? priority,
   }) async {
     setState(() {
       _requestsStatusFilter = status;
-      _requestsPriorityFilter = priority;
       _requestsPage = 1;
     });
     await _loadDeliveryRequests();
@@ -990,26 +986,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     setState(() {
       _allocationsStatusFilter = status;
       _allocationsPage = 1;
-    });
-    await _loadDeliveryRequests();
-  }
-
-  Future<void> _setRequestsPage(int page) async {
-    if (page < 1 || page == _requestsPage) {
-      return;
-    }
-    setState(() {
-      _requestsPage = page;
-    });
-    await _loadDeliveryRequests();
-  }
-
-  Future<void> _setAllocationsPage(int page) async {
-    if (page < 1 || page == _allocationsPage) {
-      return;
-    }
-    setState(() {
-      _allocationsPage = page;
     });
     await _loadDeliveryRequests();
   }
@@ -1028,7 +1004,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       final results = await Future.wait<dynamic>([
         _repository.getDeliveryRequests(
           status: _requestsStatusFilter,
-          priority: _requestsPriorityFilter,
           page: _requestsPage,
           pageSize: _requestsPageSize,
         ),
@@ -1448,6 +1423,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   onBack: () => _goTo(AppScreen.home),
                 ),
               AppScreen.home => HomeScreen(
+                  actorRole: _userProfile!.role,
                   queue: _queue,
                   navIndex: _navIndex,
                   locationLabel: _userProfile!.locationLabel,
@@ -1511,33 +1487,21 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   },
                 ),
               AppScreen.requests => DeliveryRequestsScreen(
+                  actorRole: _userProfile!.role,
                   requests: _deliveryRequests,
                   allocations: _allocations,
                   totalRequests: _deliveryRequestsTotal,
                   totalAllocations: _allocationsTotal,
                   selectedRequestStatus: _requestsStatusFilter,
-                  selectedRequestPriority: _requestsPriorityFilter,
                   selectedAllocationStatus: _allocationsStatusFilter,
-                  requestsPage: _requestsPage,
-                  allocationsPage: _allocationsPage,
-                  requestsPageSize: _requestsPageSize,
-                  allocationsPageSize: _allocationsPageSize,
                   isBusy: _isLoadingRequests || _isMutatingRequest,
                   errorMessage: _deliveryError,
                   onBack: () => _goTo(AppScreen.home),
                   onRefresh: () => _loadDeliveryRequests(),
-                  onRequestStatusFilterChange: (value) => _setRequestFilters(
-                    status: value,
-                    priority: _requestsPriorityFilter,
-                  ),
-                  onRequestPriorityFilterChange: (value) => _setRequestFilters(
-                    status: _requestsStatusFilter,
-                    priority: value,
-                  ),
+                  onRequestStatusFilterChange: (value) =>
+                      _setRequestFilters(status: value),
                   onAllocationStatusFilterChange: (value) =>
                       _setAllocationStatusFilter(value),
-                  onRequestsPageChange: (page) => _setRequestsPage(page),
-                  onAllocationsPageChange: (page) => _setAllocationsPage(page),
                   onRunAllocate: () => _runAllocatePending(),
                   onOpenRequest: (request) => _openDeliveryRequestDetail(request),
                 ),
