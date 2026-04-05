@@ -46,6 +46,7 @@ type AlertRowProps = {
   pointNameById: Record<number, string>;
   resourceNameById: Record<number, string>;
   pendingActionKeys: Record<string, boolean>;
+  isOnline: boolean;
   onToggleExpand: (alert: AlertWithReasoning) => Promise<void>;
   onApproveProposal: (proposalId: number) => void;
   onDismissProposal: (proposalId: number) => void;
@@ -67,6 +68,7 @@ export function AlertRow({
   pointNameById,
   resourceNameById,
   pendingActionKeys,
+  isOnline,
   onToggleExpand,
   onApproveProposal,
   onDismissProposal,
@@ -133,7 +135,8 @@ export function AlertRow({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={isApprovePending}
+                  disabled={!isOnline || isApprovePending}
+                  title={!isOnline ? 'Not available offline' : undefined}
                   className="border-success/50 text-success hover:bg-success/10 hover:border-success"
                   onClick={() => onApproveProposal(alert.proposal_id!)}
                 >
@@ -146,7 +149,8 @@ export function AlertRow({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={isDismissProposalPending}
+                  disabled={!isOnline || isDismissProposalPending}
+                  title={!isOnline ? 'Not available offline' : undefined}
                   className="border-danger/50 text-danger hover:bg-danger/10 hover:border-danger"
                   onClick={() => onDismissProposal(alert.proposal_id!)}
                 >
@@ -157,7 +161,8 @@ export function AlertRow({
             <Button
               size="sm"
               variant="outline"
-              disabled={isDismissAlertPending || !canResolveAlert}
+              disabled={!isOnline || isDismissAlertPending || !canResolveAlert}
+              title={!isOnline ? 'Not available offline' : undefined}
               className="border-warning/50 text-warning hover:bg-warning/10 hover:border-warning"
               onClick={() => onDismissAlert(alert.id)}
             >

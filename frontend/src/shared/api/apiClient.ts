@@ -76,6 +76,11 @@ export async function request<T>(
   endpoint: string,
   { body, headers, query, ...init }: RequestOptions = {},
 ): Promise<T> {
+  const method = (init.method ?? 'GET').toUpperCase();
+  if (!navigator.onLine && method !== 'GET') {
+    throw new ApiError('Not available offline', 0);
+  }
+
   const payload =
     body && typeof body === 'object' && !(body instanceof FormData)
       ? JSON.stringify(body)
