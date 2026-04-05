@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useMap } from '@/features/map/hooks/useMap';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { formatDateTime } from '@/shared/lib/formatters';
@@ -8,10 +10,21 @@ import { formatDateTime } from '@/shared/lib/formatters';
 export function SettingsPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { points } = useMap({ autoRefreshMs: 0 });
+
+  const warehouseName = useMemo(() => {
+    if (!user?.location_id) return null;
+    const match = points.find((p) => p.type === 'warehouse' && p.id === user.location_id);
+    return match?.name ?? null;
+  }, [points, user?.location_id]);
 
   if (!user) {
     return null;
   }
+
+  const locationLabel = warehouseName
+    ? `${warehouseName} (#${user.location_id})`
+    : `#${user.location_id}`;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 animate-slide-up">
@@ -30,7 +43,7 @@ export function SettingsPage() {
           </div>
           <div className="rounded-xl border border-border bg-surface/60 p-4">
             <p className="text-sm text-text-muted">Warehouse / location</p>
-            <p className="mt-2 text-lg font-semibold">#{user.location_id}</p>
+            <p className="mt-2 text-lg font-semibold">{locationLabel}</p>
           </div>
           <div className="rounded-xl border border-border bg-surface/60 p-4">
             <p className="text-sm text-text-muted">Session created</p>
@@ -48,7 +61,7 @@ export function SettingsPage() {
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm text-text-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-            Authenticated against the live backend
+            Authenticated
           </p>
           <Button
             variant="danger"
