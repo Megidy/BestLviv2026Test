@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.7...v0.1.8) (2026-04-05)
+
+
+### Bug Fixes
+
+* migrations ([b76fc75](https://github.com/Megidy/BestLviv2026Test/commit/b76fc757cb5685eb44395342e5001c15e0eb9309))
+
 ## [0.1.7](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.6...v0.1.7) (2026-04-04)
 
 
