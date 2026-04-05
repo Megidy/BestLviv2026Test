@@ -1,8 +1,8 @@
-# LogySync — AI-Powered Humanitarian Logistics Platform
+# Logisync — AI-Powered Humanitarian Logistics Platform
 
 > Predict shortages before they happen. Dispatch the right resources from the right warehouse in one tap.
 
-LogySync is a full-stack humanitarian logistics system built for crisis-zone supply chain management. It combines real-time inventory tracking, role-based dispatch workflows, a live geospatial map, and a proactive AI engine that detects demand surges hours before stock runs out — then automatically proposes an optimised resupply plan.
+Logisync is a full-stack humanitarian logistics system built for crisis-zone supply chain management. It combines real-time inventory tracking, role-based dispatch workflows, a live geospatial map, and a proactive AI engine that detects demand surges hours before stock runs out — then automatically proposes an optimised resupply plan.
 
 **Live deployment:** `http://ec2-56-228-1-130.eu-north-1.compute.amazonaws.com:8080`
 
@@ -12,7 +12,7 @@ LogySync is a full-stack humanitarian logistics system built for crisis-zone sup
 
 Humanitarian logistics in active crisis zones fails not because of a lack of resources, but because of **information lag**. Warehouse workers discover shortages only after stock reaches zero. Dispatchers manually coordinate transfers across dozens of locations by phone. Medical supplies, fuel, and food sit idle in a surplus warehouse 80 km away while another location runs dry.
 
-LogySync replaces that reactive model with a proactive, AI-assisted operations hub.
+Logisync replaces that reactive model with a proactive, AI-assisted operations hub.
 
 ---
 

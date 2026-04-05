@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -6,6 +7,7 @@ import { useInventory } from '@/features/inventory/hooks/useInventory';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { Input } from '@/shared/ui/Input';
+import { Skeleton, SkeletonRow } from '@/shared/ui/Skeleton';
 import { formatDateTime, formatNumber } from '@/shared/lib/formatters';
 import {
   Table,
@@ -16,12 +18,39 @@ import {
   TableRow,
 } from '@/shared/ui/Table';
 
+type SortKey = 'quantity' | 'allocatableQuantity' | 'safetyStock';
+type SortDir = 'asc' | 'desc';
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <ChevronsUpDown size={12} className="ml-1 inline opacity-40" />;
+  return dir === 'asc'
+    ? <ChevronUp size={12} className="ml-1 inline text-primary" />
+    : <ChevronDown size={12} className="ml-1 inline text-primary" />;
+}
+
 export function InventoryModule() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [allCategories, setAllCategories] = useState<string[]>(['all']);
   const pageSize = 12;
+
+  // Unfiltered load just to get stable category list
+  const { items: allItems } = useInventory({
+    enabled: Boolean(user?.location_id),
+    locationId: user?.location_id ?? 0,
+    page: 1,
+    pageSize: 50,
+  });
+
+  useEffect(() => {
+    if (allItems.length > 0) {
+      setAllCategories(['all', ...new Set(allItems.map((item) => item.category))]);
+    }
+  }, [allItems]);
 
   const { items, total, isLoading, error } = useInventory({
     enabled: Boolean(user?.location_id),
@@ -31,12 +60,24 @@ export function InventoryModule() {
     page,
     pageSize,
   });
-
-  const categories = useMemo(
-    () => ['all', ...new Set(items.map((item) => item.category))],
-    [items],
-  );
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  }
+
+  const displayedItems = useMemo(() => {
+    if (!sortKey) return items;
+    return [...items].sort((a, b) => {
+      const diff = a[sortKey] - b[sortKey];
+      return sortDir === 'asc' ? diff : -diff;
+    });
+  }, [items, sortKey, sortDir]);
 
   return (
     <div className="space-y-5 animate-slide-up">
@@ -53,7 +94,7 @@ export function InventoryModule() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {categories.map((categoryOption) => (
+          {allCategories.map((categoryOption) => (
             <Button
               key={categoryOption}
               variant={category === categoryOption ? 'primary' : 'ghost'}
@@ -77,7 +118,22 @@ export function InventoryModule() {
           {/* Mobile card list — hidden on md+ */}
           <div className="space-y-3 md:hidden">
             {isLoading ? (
-              <p className="py-10 text-center text-sm text-text-muted">Loading inventory…</p>
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-border bg-surface/50 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {Array.from({ length: 4 }).map((__, j) => (
+                      <div key={j}>
+                        <Skeleton className="h-3 w-16 mb-1" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
             ) : error ? (
               <p className="py-10 text-center text-sm text-danger">{error}</p>
             ) : items.length === 0 ? (
@@ -129,20 +185,33 @@ export function InventoryModule() {
                 <TableRow>
                   <TableHead>Resource</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead className="text-right">Available</TableHead>
-                  <TableHead className="text-right">Safety stock</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none text-right hover:text-text"
+                    onClick={() => toggleSort('quantity')}
+                  >
+                    Quantity <SortIcon active={sortKey === 'quantity'} dir={sortDir} />
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none text-right hover:text-text"
+                    onClick={() => toggleSort('allocatableQuantity')}
+                  >
+                    Available <SortIcon active={sortKey === 'allocatableQuantity'} dir={sortDir} />
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none text-right hover:text-text"
+                    onClick={() => toggleSort('safetyStock')}
+                  >
+                    Safety stock <SortIcon active={sortKey === 'safetyStock'} dir={sortDir} />
+                  </TableHead>
                   <TableHead>Unit</TableHead>
                   <TableHead className="text-right">Updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
-                      Loading inventory…
-                    </TableCell>
-                  </TableRow>
+                  Array.from({ length: 7 }).map((_, i) => (
+                    <SkeletonRow key={i} cols={['w-32', 'w-20', 'w-16', 'w-16', 'w-16', 'w-12', 'w-24']} />
+                  ))
                 ) : error ? (
                   <TableRow>
                     <TableCell className="py-10 text-center text-danger" colSpan={7}>
@@ -156,7 +225,7 @@ export function InventoryModule() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  items.map((item) => (
+                  displayedItems.map((item) => (
                     <TableRow key={item.inventoryId} className="hover:bg-accent/60">
                       <TableCell className="font-medium">
                         <Link

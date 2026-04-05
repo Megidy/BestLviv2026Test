@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Map } from 'lucide-react';
 
-import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
 import { useNetwork } from '@/shared/hooks/useNetwork';
 import { AlertRow } from '@/features/alerts/components/AlertRow';
@@ -11,6 +10,7 @@ import { useMap } from '@/features/map/hooks/useMap';
 import { Button } from '@/shared/ui/Button';
 import { Badge } from '@/shared/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { Skeleton, SkeletonRow } from '@/shared/ui/Skeleton';
 import {
   Table,
   TableBody,
@@ -26,16 +26,15 @@ import {
 } from '@/shared/lib/formatters';
 
 export function AlertsModule() {
-  const { user } = useAuth();
   const { alerts, proposals, isLoading, isMutating, error, notice, pendingActionKeys, loadProposal, dismissAlert, approveProposal, dismissProposal, runAi } =
     useAlerts();
   const { isOnline } = useNetwork();
   const { points } = useMap();
+  // Fetch from warehouse 1 to resolve resource names across all resource IDs
   const { items } = useInventory({
-    enabled: Boolean(user?.location_id),
-    locationId: user?.location_id ?? 0,
+    locationId: 1,
     page: 1,
-    pageSize: 50,
+    pageSize: 30,
   });
   const [expandedAlertId, setExpandedAlertId] = useState<number | null>(null);
 
@@ -75,7 +74,7 @@ export function AlertsModule() {
       </div>
 
       {notice ? (
-        <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-sm text-warning">
+        <div className="fixed bottom-6 right-6 z-[9999] animate-fade-in rounded-xl border border-warning/30 bg-surface/95 px-4 py-3 text-sm text-warning shadow-card backdrop-blur-md">
           {notice}
         </div>
       ) : null}
@@ -88,7 +87,24 @@ export function AlertsModule() {
           {/* Mobile card list — hidden on lg+ */}
           <div className="space-y-3 lg:hidden">
             {isLoading ? (
-              <p className="py-10 text-center text-sm text-text-muted">Loading alerts…</p>
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-border bg-surface/50 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1.5">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                    <Skeleton className="h-5 w-14" />
+                  </div>
+                  <Skeleton className="mt-3 h-3 w-40" />
+                  <Skeleton className="mt-2 h-8 w-full" />
+                  <div className="mt-3 flex gap-2 border-t border-border pt-3">
+                    <Skeleton className="h-7 w-16" />
+                    <Skeleton className="h-7 w-16" />
+                    <Skeleton className="h-7 w-16" />
+                  </div>
+                </div>
+              ))
             ) : error ? (
               <p className="py-10 text-center text-sm text-danger">{error}</p>
             ) : alerts.length === 0 ? (
@@ -247,11 +263,9 @@ export function AlertsModule() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
-                      Loading alerts…
-                    </TableCell>
-                  </TableRow>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <SkeletonRow key={i} cols={['w-24', 'w-20', 'w-14', 'w-20', 'w-48', 'w-20', 'w-28']} />
+                  ))
                 ) : error ? (
                   <TableRow>
                     <TableCell className="py-10 text-center text-danger" colSpan={7}>
