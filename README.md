@@ -174,21 +174,21 @@ At-a-glance operations summary: total inventory value, active alert count, pendi
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   Frontend (React 18 + Vite)             │
-│                                                          │
-│  Dashboard · Map · Inventory · Alerts · Delivery ·       │
-│  Allocations · Admin (Audit Log) · Settings              │
-│                                                          │
-│  Feature-based structure: each feature owns its own      │
-│  API layer, hooks, and components.                       │
+│                   Frontend (React 18 + Vite)            │
+│                                                         │
+│  Dashboard · Map · Inventory · Alerts · Delivery ·      │
+│  Allocations · Admin (Audit Log) · Settings             │
+│                                                         │
+│  Feature-based structure: each feature owns its own     │
+│  API layer, hooks, and components.                      │
 └──────────────────────────┬──────────────────────────────┘
                            │ REST/JSON over HTTP
 ┌──────────────────────────▼──────────────────────────────┐
-│              Backend API (Go 1.25 / Echo v5)             │
-│                                                          │
-│  Strict layered architecture — no DI framework:          │
-│  Controller → Use Case → Repository → PostgreSQL         │
-│                                                          │
+│              Backend API (Go 1.25 / Echo v5)            │
+│                                                         │
+│  Strict layered architecture — no DI framework:         │
+│  Controller → Use Case → Repository → PostgreSQL        │
+│                                                         │
 │  ┌───────────────────────────────────────────────────┐  │
 │  │              AI Prediction Engine                 │  │
 │  │  WMA · Confidence · Shortfall · Rebalancing Score │  │
@@ -198,12 +198,12 @@ At-a-glance operations summary: total inventory value, active alert count, pendi
 └──────────────────────────┬──────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────┐
-│                    PostgreSQL 16                          │
-│                                                          │
-│  warehouses · customers · users · resources              │
-│  inventories · delivery_requests · allocations           │
-│  demand_readings · predictive_alerts · proposals         │
-│  rebalancing_transfers · audit_log                       │
+│                    PostgreSQL 16                        │
+│                                                         │
+│  warehouses · customers · users · resources             │
+│  inventories · delivery_requests · allocations          │
+│  demand_readings · predictive_alerts · proposals        │
+│  rebalancing_transfers · audit_log                      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -265,22 +265,6 @@ cd frontend
 npm install
 npm run dev        # starts on http://localhost:5173
 ```
-
----
-
-## Demo Credentials
-
-Password for all accounts: **`secret`**
-
-| Username | Role | Warehouse |
-|---|---|---|
-| `admin_w1` | Admin | Kyiv Central |
-| `dispatcher_w1` | Dispatcher | Kyiv Central |
-| `worker1_w1` | Worker | Kyiv Central |
-| `admin_w3` | Admin | Kharkiv Main |
-| `dispatcher_w5` | Dispatcher | Dnipro Industrial |
-
-Full matrix: `admin_w1`–`admin_w20`, `dispatcher_w1`–`dispatcher_w20`, `worker1_w1`–`worker1_w20` (one per warehouse).
 
 ---
 
