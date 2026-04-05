@@ -236,15 +236,14 @@ npm run dev        # starts on http://localhost:5173
 
 ## Demo Credentials
 
-Password for all accounts: **`secret`**
 
-| Username | Role | Warehouse |
-|---|---|---|
-| `admin_w1` | Admin | Kyiv Central |
-| `dispatcher_w1` | Dispatcher | Kyiv Central |
-| `worker1_w1` | Worker | Kyiv Central |
-| `admin_w3` | Admin | Kharkiv Main |
-| `dispatcher_w5` | Dispatcher | Dnipro Industrial |
+| Username | Password | Role | Warehouse |
+|---|---|---|---|
+| `admin_w1` | password123 | Admin | Kyiv Central |
+| `dispatcher_w1` | password | Dispatcher | Kyiv Central |
+| `worker1_w1` | password | Worker | Kyiv Central |
+| `admin_w3` | password | Admin | Kharkiv Main |
+| `dispatcher_w5` | password | Dispatcher | Dnipro Industrial |
 
 Full matrix: `admin_w1`–`admin_w20`, `dispatcher_w1`–`dispatcher_w20`, `worker1_w1`–`worker1_w20` (one per warehouse).
 
