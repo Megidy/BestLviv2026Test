@@ -19,7 +19,7 @@
 Logisync is a full-stack humanitarian logistics system built for crisis-zone supply chain management. It combines real-time inventory tracking, role-based dispatch workflows, a live geospatial map, and a proactive AI engine that detects demand surges hours before stock runs out — then automatically proposes an optimised resupply plan.
 
 **Live deployment:** 
-- API: https://api.logysinc.systems/swagger/index.html
+- API: https://api.logisync.systems/swagger/index.html
 - Vercel: https://best-lviv2026-test.vercel.app
 
 ## Demo Credentials
