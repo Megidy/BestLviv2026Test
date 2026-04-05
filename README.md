@@ -1,8 +1,8 @@
-# LogySync — AI-Powered Humanitarian Logistics Platform
+# Logisync — AI-Powered Humanitarian Logistics Platform
 
 > Predict shortages before they happen. Dispatch the right resources from the right warehouse in one tap.
 
-LogySync is a full-stack humanitarian logistics system built for crisis-zone supply chain management. It combines real-time inventory tracking, role-based dispatch workflows, a live geospatial map, and a proactive AI engine that detects demand surges hours before stock runs out — then automatically proposes an optimised resupply plan.
+Logisync is a full-stack humanitarian logistics system built for crisis-zone supply chain management. It combines real-time inventory tracking, role-based dispatch workflows, a live geospatial map, and a proactive AI engine that detects demand surges hours before stock runs out — then automatically proposes an optimised resupply plan.
 
 **Live deployment:** 
 - API: https://api.logysinc.systems/swagger/index.html
@@ -14,7 +14,7 @@ LogySync is a full-stack humanitarian logistics system built for crisis-zone sup
 
 Humanitarian logistics in active crisis zones fails not because of a lack of resources, but because of **information lag**. Warehouse workers discover shortages only after stock reaches zero. Dispatchers manually coordinate transfers across dozens of locations by phone. Medical supplies, fuel, and food sit idle in a surplus warehouse 80 km away while another location runs dry.
 
-LogySync replaces that reactive model with a proactive, AI-assisted operations hub.
+Logisync replaces that reactive model with a proactive, AI-assisted operations hub.
 
 ---
 
@@ -114,7 +114,23 @@ Every delivery action (create, allocate, approve, dispatch, deliver, cancel) is 
 
 ---
 
-### 8. Dashboard
+### 8. Mobile App (Flutter)
+
+A dedicated Flutter application for warehouse workers operating in the field — designed around the brief's explicit requirement for warehouse usability.
+
+Key design constraints:
+- **Min 48×48px tap targets** — works with gloves
+- **16sp+ font size** — readable in poor warehouse lighting
+- **High-contrast dark theme** — visible in direct sunlight
+- **Bottom navigation** — thumb-reachable on large phones
+
+**QR scanning workflow:** Every resource shelf has a printed QR label encoding `RESOURCE:{id}:POINT:{id}`. Worker taps Scan → camera decodes → Quick Action screen appears with current stock. Three actions: update demand, flag urgent, confirm delivery. Two taps from scan to action — no searching, no typing.
+
+A demand update recorded on the phone triggers the AI analysis immediately in the backend. An alert can appear on the dispatcher's desktop within seconds of the scan — demonstrable in real time.
+
+**Platform:** Android + iOS from a single Dart codebase.
+
+### 9. Dashboard
 
 At-a-glance operations summary: total inventory value, active alert count, pending request count, recent allocation status. Data is pulled live from the same API endpoints.
 
@@ -159,6 +175,7 @@ At-a-glance operations summary: total inventory value, active alert count, pendi
 
 **Backend:** Go 1.25 · Echo v5 · pgx v5 · golang-migrate · swaggo  
 **Frontend:** React 18 · TypeScript · Vite · Tailwind CSS · Lucide icons · Leaflet  
+**Mobile:** Flutter 3 · Dart · iOS + Android · mobile_scanner · flutter_secure_storage  
 **Infrastructure:** Docker Compose · AWS EC2 · GitHub Actions CI/CD  
 **AI:** Weighted Moving Average · Haversine scoring · Optional Groq LLM (llama-3.1-8b-instant)
 
@@ -271,4 +288,5 @@ The seeded database contains:
 
 - [Backend Architecture & API Reference](backend/docs/BACKEND.md)
 - [Frontend Architecture](frontend/docs/FRONTEND.md)
+- [Mobile App (Flutter)](mobile/docs/MOBILE.md)
 - [AI Prediction Module Deep-Dive](backend/docs/AI_MODULE.md)
