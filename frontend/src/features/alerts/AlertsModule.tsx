@@ -1,8 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Map } from 'lucide-react';
 
-import { alerts } from '@/shared/config/operations-data';
-import { Badge } from '@/shared/ui/Badge';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAlerts } from '@/features/alerts/hooks/useAlerts';
+import { AlertRow } from '@/features/alerts/components/AlertRow';
+import { useInventory } from '@/features/inventory/hooks/useInventory';
+import { useMap } from '@/features/map/hooks/useMap';
 import { Button } from '@/shared/ui/Button';
+import { Badge } from '@/shared/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import {
   Table,
@@ -12,82 +18,273 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/ui/Table';
+import {
+  alertTone,
+  formatPercent,
+  formatRelativeCountdown,
+} from '@/shared/lib/formatters';
 
 export function AlertsModule() {
+  const { user } = useAuth();
+  const { alerts, proposals, isLoading, isMutating, error, notice, pendingActionKeys, loadProposal, dismissAlert, approveProposal, dismissProposal, runAi } =
+    useAlerts();
+  const { points } = useMap();
+  const { items } = useInventory({
+    enabled: Boolean(user?.location_id),
+    locationId: user?.location_id ?? 0,
+    page: 1,
+    pageSize: 50,
+  });
+  const [expandedAlertId, setExpandedAlertId] = useState<number | null>(null);
+
+  const pointNameById = useMemo(
+    () => Object.fromEntries(
+      points.filter((p) => p.type === 'customer').map((point) => [point.id, point.name]),
+    ),
+    [points],
+  );
+  const resourceNameById = useMemo(
+    () => Object.fromEntries(items.map((item) => [item.resourceId, item.name])),
+    [items],
+  );
   const summary = useMemo(
     () => ({
-      open: alerts.filter((item) => item.status === 'open').length,
-      pending: alerts.filter((item) => item.status === 'pending').length,
+      open: alerts.length,
+      pending: alerts.filter((item) => item.proposal_id).length,
     }),
-    [],
+    [alerts],
   );
 
   return (
     <div className="space-y-5 animate-slide-up">
-      <p className="flex items-center gap-2 text-sm text-text-muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
-        {summary.open} open alerts · {summary.pending} pending review
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-sm text-text-muted">
+          <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
+          {summary.open} open alerts · {summary.pending} proposals available
+        </p>
+        <Button size="sm" onClick={() => void runAi()} disabled={isMutating}>
+          Run predictive AI
+        </Button>
+      </div>
+
+      {notice ? (
+        <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-sm text-warning">
+          {notice}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>
           <CardTitle>Alert queue</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Location</TableHead>
-                <TableHead>Resource</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Severity</TableHead>
-                <TableHead>ETA</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {alerts.map((alert) => (
-                <TableRow key={alert.id} className="hover:bg-accent/60">
-                  <TableCell className="font-medium">
-                    {alert.location}
-                  </TableCell>
-                  <TableCell>{alert.resource}</TableCell>
-                  <TableCell>
-                    <Badge
-                      tone={alert.type === 'Predicted' ? 'info' : 'neutral'}
-                    >
-                      {alert.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge tone={alert.severity}>{alert.severity}</Badge>
-                  </TableCell>
-                  <TableCell className="text-text-muted">{alert.eta}</TableCell>
-                  <TableCell className="text-text-muted">
-                    {alert.owner}
-                  </TableCell>
-                  <TableCell className="text-text-muted">
-                    {alert.status}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost">
-                        Approve
+          {/* Mobile card list — hidden on lg+ */}
+          <div className="space-y-3 lg:hidden">
+            {isLoading ? (
+              <p className="py-10 text-center text-sm text-text-muted">Loading alerts…</p>
+            ) : error ? (
+              <p className="py-10 text-center text-sm text-danger">{error}</p>
+            ) : alerts.length === 0 ? (
+              <p className="py-10 text-center text-sm text-text-muted">No predictive alerts are currently open.</p>
+            ) : (
+              alerts.map((alert) => {
+                const isExpanded = expandedAlertId === alert.id;
+                const canResolveAlert = alert.status === 'open';
+                const canApproveProposal = Boolean(
+                  alert.proposal_id &&
+                    canResolveAlert &&
+                    proposals[alert.proposal_id]?.status !== 'approved' &&
+                    proposals[alert.proposal_id]?.status !== 'dismissed',
+                );
+                const canDismissProposal = Boolean(
+                  alert.proposal_id &&
+                    canResolveAlert &&
+                    proposals[alert.proposal_id]?.status !== 'dismissed' &&
+                    proposals[alert.proposal_id]?.status !== 'approved',
+                );
+
+                return (
+                  <div
+                    key={alert.id}
+                    className={`rounded-xl border border-border bg-surface/50 p-4 ${
+                      canResolveAlert ? '' : 'opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-text">
+                          {pointNameById[alert.point_id] ?? `Point #${alert.point_id}`}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-text-muted">
+                          {resourceNameById[alert.resource_id] ?? `Resource #${alert.resource_id}`}
+                        </p>
+                      </div>
+                      <Badge tone={alertTone(alert)}>{formatPercent(alert.confidence)}</Badge>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                      <span>ETA: {formatRelativeCountdown(alert.predicted_shortfall_at)}</span>
+                      <span>·</span>
+                      <span className="capitalize">{alert.status}</span>
+                    </div>
+
+                    <p className="mt-2 line-clamp-2 text-sm text-text">{alert.reasoning.summary}</p>
+
+                    {isExpanded ? (
+                      <div className="mt-3 space-y-2 border-t border-border pt-3">
+                        <div className="rounded-xl border border-border bg-background/60 p-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-text-muted">What is happening</p>
+                          <p className="mt-1 text-sm text-text">{alert.reasoning.demandTrend}</p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/60 p-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-text-muted">When it may happen</p>
+                          <p className="mt-1 text-sm text-text">{alert.reasoning.timePrediction}</p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/60 p-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-text-muted">Why the AI flagged this</p>
+                          <p className="mt-1 text-sm text-text">{alert.reasoning.full}</p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            if (alert.proposal_id) await loadProposal(alert.proposal_id);
+                          setExpandedAlertId((cur) => cur === alert.id ? null : alert.id);
+                        }}
+                      >
+                        {isExpanded ? 'Collapse' : 'Details'}
                       </Button>
-                      <Button size="sm" variant="ghost">
-                        Dismiss
+                      {canApproveProposal ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={Boolean(
+                              pendingActionKeys[`approve-proposal:${alert.proposal_id}`],
+                            )}
+                            className="border-success/50 text-success hover:bg-success/10 hover:border-success"
+                            onClick={() => void approveProposal(alert.proposal_id!)}
+                          >
+                            {pendingActionKeys[`approve-proposal:${alert.proposal_id}`]
+                              ? 'Approving…'
+                              : 'Approve'}
+                          </Button>
+                        </>
+                      ) : null}
+                      {canDismissProposal ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={Boolean(
+                              pendingActionKeys[`dismiss-proposal:${alert.proposal_id}`],
+                            )}
+                            className="border-danger/50 text-danger hover:bg-danger/10 hover:border-danger"
+                            onClick={() => void dismissProposal(alert.proposal_id!)}
+                          >
+                            {pendingActionKeys[`dismiss-proposal:${alert.proposal_id}`]
+                              ? 'Rejecting…'
+                              : 'Reject'}
+                          </Button>
+                        </>
+                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          !canResolveAlert ||
+                          Boolean(pendingActionKeys[`dismiss-alert:${alert.id}`])
+                        }
+                        className="border-warning/50 text-warning hover:bg-warning/10 hover:border-warning"
+                        onClick={() => void dismissAlert(alert.id)}
+                      >
+                        {pendingActionKeys[`dismiss-alert:${alert.id}`]
+                          ? 'Dismissing…'
+                          : 'Dismiss'}
                       </Button>
-                      <Button size="sm" variant="outline">
-                        Map
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/map?focusId=${alert.point_id}&focusType=customer`}>
+                          <Map size={15} />
+                        </Link>
                       </Button>
                     </div>
-                  </TableCell>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop table — hidden on mobile/tablet */}
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Resource</TableHead>
+                  <TableHead>Confidence</TableHead>
+                  <TableHead>Shortage ETA</TableHead>
+                  <TableHead>Reasoning</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
+                      Loading alerts…
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-danger" colSpan={7}>
+                      {error}
+                    </TableCell>
+                  </TableRow>
+                ) : alerts.length === 0 ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
+                      No predictive alerts are currently open.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  alerts.map((alert) => {
+                    const proposal =
+                      alert.proposal_id !== undefined
+                        ? proposals[alert.proposal_id]
+                        : undefined;
+
+                    return (
+                      <AlertRow
+                        key={alert.id}
+                      alert={alert}
+                      proposal={proposal}
+                      expanded={expandedAlertId === alert.id}
+                      pointNameById={pointNameById}
+                      resourceNameById={resourceNameById}
+                      pendingActionKeys={pendingActionKeys}
+                      onToggleExpand={async (selectedAlert) => {
+                        if (selectedAlert.proposal_id) {
+                          await loadProposal(selectedAlert.proposal_id);
+                          }
+                          setExpandedAlertId((current: number | null) =>
+                            current === selectedAlert.id ? null : selectedAlert.id,
+                          );
+                        }}
+                        onApproveProposal={(proposalId) => void approveProposal(proposalId)}
+                        onDismissProposal={(proposalId) => void dismissProposal(proposalId)}
+                        onDismissAlert={(alertId) => void dismissAlert(alertId)}
+                      />
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { apiClient } from '@/shared/api';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button } from '@/shared/ui/Button';
 import {
   Card,
@@ -14,6 +14,7 @@ import { Input } from '@/shared/ui/Input';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login, error: authError } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,14 +25,12 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const resp = await apiClient<{ data: string }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-      });
-      localStorage.setItem('token', resp.data);
+      await login(username, password);
       navigate('/dashboard');
-    } catch {
-      setError('Invalid credentials');
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Invalid credentials',
+      );
     } finally {
       setLoading(false);
     }
@@ -42,16 +41,14 @@ export function LoginPage() {
       <div className="w-full max-w-md animate-slide-up">
         <Card>
           <CardHeader>
-            <div className="mb-3 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 shadow-glow">
-                <span className="text-base font-bold text-primary">L</span>
-              </div>
-              <span className="text-sm font-semibold tracking-wide text-text">
+            <div className="mb-4 flex flex-col items-center gap-3">
+              <img src="/logo.png" alt="Logisync" className="h-16 w-16 object-contain" />
+              <span className="text-base font-semibold tracking-wide text-text">
                 Logisync
               </span>
             </div>
-            <CardTitle>Sign in</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-center">Sign in</CardTitle>
+            <CardDescription className="text-center">
               Enter your credentials to access the operations hub.
             </CardDescription>
           </CardHeader>
@@ -82,8 +79,8 @@ export function LoginPage() {
                   required
                 />
               </div>
-              {error && (
-                <p className="text-sm text-danger">{error}</p>
+              {(error || authError) && (
+                <p className="text-sm text-danger">{error || authError}</p>
               )}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Signing in…' : 'Continue'}
