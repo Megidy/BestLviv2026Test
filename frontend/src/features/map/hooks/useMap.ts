@@ -8,12 +8,15 @@ type UseMapOptions = {
   enabled?: boolean;
 };
 
+// Module-level cache so revisiting a page shows data instantly
+let _cachedPoints: MapPoint[] | null = null;
+
 export function useMap({
   autoRefreshMs = 30_000,
   enabled = true,
 }: UseMapOptions = {}) {
-  const [points, setPoints] = useState<MapPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled);
+  const [points, setPoints] = useState<MapPoint[]>(_cachedPoints ?? []);
+  const [isLoading, setIsLoading] = useState(enabled && _cachedPoints === null);
   const [error, setError] = useState<string | null>(null);
 
   const loadPoints = useCallback(async () => {
@@ -23,14 +26,17 @@ export function useMap({
       return;
     }
 
-    setIsLoading(true);
+    if (_cachedPoints === null) setIsLoading(true);
     setError(null);
 
     try {
       const response = await getMapPoints();
-      setPoints(Array.isArray(response) ? response : []);
+      _cachedPoints = response;
+      setPoints(response);
     } catch (caught) {
-      setPoints([]);
+      // Keep showing cached data on error instead of blanking out
+      if (_cachedPoints !== null) setPoints(_cachedPoints);
+      else setPoints([]);
       setError(caught instanceof Error ? caught.message : 'Failed to load map');
     } finally {
       setIsLoading(false);

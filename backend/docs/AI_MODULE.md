@@ -4,7 +4,7 @@
 
 Most logistics software is reactive: it tells you stock has hit zero. By then it's too late.
 
-LogySync's prediction engine monitors demand trends continuously across every `(delivery point, resource)` pair. When a surge is detected, it raises an alert **hours before stock runs out** — and immediately generates a concrete, optimal rebalancing proposal that a dispatcher can approve with one click.
+Logisync's prediction engine monitors demand trends continuously across every `(delivery point, resource)` pair. When a surge is detected, it raises an alert **hours before stock runs out** — and immediately generates a concrete, optimal rebalancing proposal that a dispatcher can approve with one click.
 
 The engine runs in the background every hour. A manual trigger endpoint exists for demos.
 

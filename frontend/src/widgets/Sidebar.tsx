@@ -183,11 +183,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop sidebar — always visible at lg+ */}
+      {/* Desktop sidebar — sticky, always visible at lg+ */}
       <aside
         role="complementary"
         aria-label="Sidebar"
-        className="hidden h-full flex-col border-r border-border bg-surface/80 backdrop-blur-md lg:flex"
+        className="hidden w-[220px] shrink-0 sticky top-0 h-screen flex-col overflow-y-auto border-r border-border bg-surface/80 backdrop-blur-md lg:flex"
       >
         <SidebarContent />
       </aside>

@@ -10,6 +10,8 @@ import {
   runAi,
   type AlertWithReasoning,
 } from '@/features/alerts/api/alertsApi';
+import { invalidateCache } from '@/shared/api/apiClient';
+import { endpoints } from '@/shared/api/endpoints';
 import type { RebalancingProposal } from '@/shared/api';
 
 type UseAlertsOptions = {
@@ -18,20 +20,24 @@ type UseAlertsOptions = {
   enabled?: boolean;
 };
 
+// Module-level cache so revisiting the alerts page shows data instantly
+let _cachedAlerts: AlertWithReasoning[] | null = null;
+let _cachedAlertTotal = 0;
+
 export function useAlerts({
   page = 1,
   pageSize = 20,
   enabled = true,
 }: UseAlertsOptions = {}) {
-  const [alerts, setAlerts] = useState<AlertWithReasoning[]>([]);
+  const [alerts, setAlerts] = useState<AlertWithReasoning[]>(_cachedAlerts ?? []);
   const [proposals, setProposals] = useState<Record<number, RebalancingProposal | null>>(
     {},
   );
-  const [isLoading, setIsLoading] = useState(enabled);
+  const [isLoading, setIsLoading] = useState(enabled && _cachedAlerts === null);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(_cachedAlertTotal);
   const [pendingActionKeys, setPendingActionKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -56,14 +62,16 @@ export function useAlerts({
       return;
     }
 
-    setIsLoading(true);
+    if (_cachedAlerts === null) setIsLoading(true);
     setError(null);
 
     try {
       const response = await getAlerts(page, pageSize);
       const loadedAlerts = Array.isArray(response.alerts) ? response.alerts : [];
+      _cachedAlerts = loadedAlerts;
+      _cachedAlertTotal = typeof response.total === 'number' ? response.total : 0;
       setAlerts(loadedAlerts);
-      setTotal(typeof response.total === 'number' ? response.total : 0);
+      setTotal(_cachedAlertTotal);
 
       // Eagerly fetch proposals for all alerts so action buttons reflect
       // current proposal status without requiring the user to expand first.
@@ -156,10 +164,15 @@ export function useAlerts({
         if (options?.successMessage) {
           setNotice(options.successMessage);
         }
+        // Bust HTTP GET cache so load() fetches fresh data (silently — no loading flash)
+        invalidateCache(endpoints.alerts.list);
+        invalidateCache('/v1/rebalancing-proposals');
         await load();
       } catch (caught) {
         if (caught instanceof AlertsConflictError) {
           options?.rollback?.();
+          invalidateCache(endpoints.alerts.list);
+          invalidateCache('/v1/rebalancing-proposals');
           await load();
           return;
         }

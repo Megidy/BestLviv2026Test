@@ -2,7 +2,7 @@
 
 ## Overview
 
-The LogySync frontend is a React 18 single-page application built with Vite, TypeScript, and Tailwind CSS. It connects to the Go backend via a thin REST client and renders a fully role-aware operations hub for warehouse managers, dispatchers, and workers.
+The Logisync frontend is a React 18 single-page application built with Vite, TypeScript, and Tailwind CSS. It connects to the Go backend via a thin REST client and renders a fully role-aware operations hub for warehouse managers, dispatchers, and workers.
 
 **Stack:** React 18 · TypeScript · Vite · Tailwind CSS · Lucide Icons · Leaflet (map) · React Router v6
 

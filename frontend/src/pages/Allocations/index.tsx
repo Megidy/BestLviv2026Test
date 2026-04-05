@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useMap } from '@/features/map/hooks/useMap';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
 import {
   endpoints,
+  invalidateCache,
   request,
   unwrapApiResponse,
   type ApiResponse,
@@ -15,6 +17,7 @@ import {
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { Skeleton, SkeletonRow } from '@/shared/ui/Skeleton';
 import {
   Table,
   TableBody,
@@ -50,9 +53,21 @@ function statusLabel(status: AllocationStatus): string {
   }
 }
 
+type SortKey = 'quantity';
+type SortDir = 'asc' | 'desc';
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <ChevronsUpDown size={13} className="ml-1 inline opacity-40" />;
+  return dir === 'asc'
+    ? <ChevronUp size={13} className="ml-1 inline text-primary" />
+    : <ChevronDown size={13} className="ml-1 inline text-primary" />;
+}
+
 export function AllocationsPage() {
   const { user } = useAuth();
   const { points } = useMap({ autoRefreshMs: 0 });
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   // Fetch warehouse 1 inventory to resolve resource names (all ~30 resources)
   const { items: resourceItems } = useInventory({ locationId: 1, page: 1, pageSize: 30 });
@@ -84,7 +99,9 @@ export function AllocationsPage() {
         { query: { page: 1, pageSize: 50 } },
       );
       const data = unwrapApiResponse(response);
-      setAllocations(Array.isArray(data?.allocations) ? data.allocations : []);
+      const sorted = (Array.isArray(data?.allocations) ? data.allocations : [])
+        .sort((a, b) => b.id - a.id);
+      setAllocations(sorted);
       setError(null);
     } catch (caught) {
       setAllocations([]);
@@ -101,6 +118,7 @@ export function AllocationsPage() {
     setPendingKeys((prev) => ({ ...prev, [key]: true }));
     try {
       await request(endpoints.allocations.approve(id), { method: 'POST' });
+      invalidateCache(endpoints.allocations.list);
       await loadAllocations();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to approve allocation');
@@ -118,6 +136,7 @@ export function AllocationsPage() {
         method: 'POST',
         body: { reason },
       });
+      invalidateCache(endpoints.allocations.list);
       await loadAllocations();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to reject allocation');
@@ -131,6 +150,7 @@ export function AllocationsPage() {
     setPendingKeys((prev) => ({ ...prev, [key]: true }));
     try {
       await request(endpoints.allocations.dispatch(id), { method: 'POST' });
+      invalidateCache(endpoints.allocations.list);
       await loadAllocations();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to dispatch allocation');
@@ -138,6 +158,23 @@ export function AllocationsPage() {
       setPendingKeys((prev) => { const next = { ...prev }; delete next[key]; return next; });
     }
   }
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  }
+
+  const displayedAllocations = useMemo(() => {
+    if (!sortKey) return allocations;
+    return [...allocations].sort((a, b) => {
+      const diff = a[sortKey] - b[sortKey];
+      return sortDir === 'asc' ? diff : -diff;
+    });
+  }, [allocations, sortKey, sortDir]);
 
   function warehouseLabel(id: number) {
     const name = warehouseNameById[id];
@@ -173,11 +210,29 @@ export function AllocationsPage() {
           {/* Mobile card list */}
           <div className="space-y-3 lg:hidden" role="list" aria-label="Allocations">
             {isLoading ? (
-              <p className="py-10 text-center text-sm text-text-muted">Loading allocations…</p>
-            ) : allocations.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-border bg-surface/50 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {Array.from({ length: 3 }).map((__, j) => (
+                      <div key={j}>
+                        <Skeleton className="h-3 w-16 mb-1" />
+                        <Skeleton className="h-4 w-36" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : displayedAllocations.length === 0 ? (
               <p className="py-10 text-center text-sm text-text-muted">No allocations found.</p>
             ) : (
-              allocations.map((alloc) => (
+              displayedAllocations.map((alloc) => (
                 <div key={alloc.id} role="listitem" className="rounded-xl border border-border bg-surface/50 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -261,7 +316,12 @@ export function AllocationsPage() {
                   <TableHead>Request</TableHead>
                   <TableHead>Warehouse</TableHead>
                   <TableHead>Resource</TableHead>
-                  <TableHead>Qty</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none hover:text-text"
+                    onClick={() => toggleSort('quantity')}
+                  >
+                    Qty <SortIcon active={sortKey === 'quantity'} dir={sortDir} />
+                  </TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Dispatched at</TableHead>
                   {canManage ? <TableHead className="text-right">Actions</TableHead> : null}
@@ -269,19 +329,17 @@ export function AllocationsPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell className="py-10 text-center text-text-muted" colSpan={canManage ? 8 : 7}>
-                      Loading allocations…
-                    </TableCell>
-                  </TableRow>
-                ) : allocations.length === 0 ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <SkeletonRow key={i} cols={['w-8', 'w-8', 'w-32', 'w-28', 'w-12', 'w-20', 'w-24', ...(canManage ? ['w-28'] : [])]} />
+                  ))
+                ) : displayedAllocations.length === 0 ? (
                   <TableRow>
                     <TableCell className="py-10 text-center text-text-muted" colSpan={canManage ? 8 : 7}>
                       No allocations found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  allocations.map((alloc) => (
+                  displayedAllocations.map((alloc) => (
                     <TableRow key={alloc.id} className="hover:bg-accent/60">
                       <TableCell className="font-medium text-text">#{alloc.id}</TableCell>
                       <TableCell className="text-text-muted">#{alloc.request_id}</TableCell>
