@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  'https://ec2-56-228-1-130.eu-north-1.compute.amazonaws.com:8080';
+  'https://ec2-56-228-1-130.eu-north-1.compute.amazonaws.com';
 
 export const endpoints = {
   auth: {
