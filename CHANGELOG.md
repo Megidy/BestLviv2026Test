@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.9](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.8...v0.1.9) (2026-04-05)
+
+
+### Bug Fixes
+
+* downgrade Vite and Vite React plugin versions; update API base URL ([e96983a](https://github.com/Megidy/BestLviv2026Test/commit/e96983ac7a30fac556e7afe651101ee369e242f2))
+* downgrade Vite and Vite React plugin versions; update API base URL ([be25dcc](https://github.com/Megidy/BestLviv2026Test/commit/be25dcc5bf0419789134039dafab11bd32befdba))
+
 ## [0.1.8](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.7...v0.1.8) (2026-04-05)
 
 
