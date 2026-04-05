@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Map } from 'lucide-react';
 
-import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
 import { useNetwork } from '@/shared/hooks/useNetwork';
 import { AlertRow } from '@/features/alerts/components/AlertRow';
@@ -27,7 +26,6 @@ import {
 } from '@/shared/lib/formatters';
 
 export function AlertsModule() {
-  const { user } = useAuth();
   const { alerts, proposals, isLoading, isMutating, error, notice, pendingActionKeys, loadProposal, dismissAlert, approveProposal, dismissProposal, runAi } =
     useAlerts();
   const { isOnline } = useNetwork();
