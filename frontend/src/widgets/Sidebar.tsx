@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 
 import { navigationItems, settingsItem } from '@/shared/config/navigation';
 import { cn } from '@/shared/lib/cn';
+import { useNetwork } from '@/shared/hooks/useNetwork';
 
 type SidebarProps = {
   open: boolean;
@@ -11,6 +12,7 @@ type SidebarProps = {
 };
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
+  const { isOnline } = useNetwork();
   return (
     <>
       <div className="flex h-[73px] items-center justify-between border-b border-border px-5">
@@ -120,8 +122,17 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       <div className="border-t border-border px-5 py-4">
         <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success shadow-[0_0_6px_rgba(78,122,81,0.5)]" />
-          <span className="text-xs text-text-muted">v0.1.0 · online</span>
+          <span
+            className={cn(
+              'h-1.5 w-1.5 rounded-full',
+              isOnline
+                ? 'animate-pulse bg-success shadow-[0_0_6px_rgba(78,122,81,0.5)]'
+                : 'bg-warning',
+            )}
+          />
+          <span className="text-xs text-text-muted">
+            v0.1.0 · {isOnline ? 'online' : 'offline'}
+          </span>
         </div>
       </div>
     </>

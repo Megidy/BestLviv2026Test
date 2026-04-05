@@ -4,6 +4,7 @@ import { Map } from 'lucide-react';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
+import { useNetwork } from '@/shared/hooks/useNetwork';
 import { AlertRow } from '@/features/alerts/components/AlertRow';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
 import { useMap } from '@/features/map/hooks/useMap';
@@ -28,6 +29,7 @@ export function AlertsModule() {
   const { user } = useAuth();
   const { alerts, proposals, isLoading, isMutating, error, loadProposal, dismissAlert, approveProposal, dismissProposal, runAi } =
     useAlerts();
+  const { isOnline } = useNetwork();
   const { points } = useMap();
   const { items } = useInventory({
     enabled: Boolean(user?.location_id),
@@ -62,7 +64,12 @@ export function AlertsModule() {
           <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
           {summary.open} open alerts · {summary.pending} proposals available
         </p>
-        <Button size="sm" onClick={() => void runAi()} disabled={isMutating}>
+        <Button
+          size="sm"
+          onClick={() => void runAi()}
+          disabled={isMutating || !isOnline}
+          title={!isOnline ? 'Not available offline' : undefined}
+        >
           Run predictive AI
         </Button>
       </div>
@@ -142,7 +149,8 @@ export function AlertsModule() {
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={isMutating}
+                            disabled={isMutating || !isOnline}
+                            title={!isOnline ? 'Not available offline' : undefined}
                             className="border-success/50 text-success hover:bg-success/10 hover:border-success"
                             onClick={() => void approveProposal(alert.proposal_id!)}
                           >
@@ -151,7 +159,8 @@ export function AlertsModule() {
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={isMutating}
+                            disabled={isMutating || !isOnline}
+                            title={!isOnline ? 'Not available offline' : undefined}
                             className="border-danger/50 text-danger hover:bg-danger/10 hover:border-danger"
                             onClick={() => void dismissProposal(alert.proposal_id!)}
                           >
@@ -162,7 +171,8 @@ export function AlertsModule() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={isMutating}
+                        disabled={isMutating || !isOnline}
+                        title={!isOnline ? 'Not available offline' : undefined}
                         className="border-warning/50 text-warning hover:bg-warning/10 hover:border-warning"
                         onClick={() => void dismissAlert(alert.id)}
                       >
@@ -229,6 +239,7 @@ export function AlertsModule() {
                         pointNameById={pointNameById}
                         resourceNameById={resourceNameById}
                         isMutating={isMutating}
+                        isOnline={isOnline}
                         onToggleExpand={async (selectedAlert) => {
                           if (selectedAlert.proposal_id) {
                             await loadProposal(selectedAlert.proposal_id);
