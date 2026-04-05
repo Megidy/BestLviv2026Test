@@ -1,0 +1,248 @@
+# AI Demand Prediction Module
+
+## What It Does
+
+The AI module solves a single problem: **predict resource shortages before they happen and automatically propose how to fix them.**
+
+Most logistics systems are reactive — they alert you when stock hits zero. LogySync's prediction engine monitors demand trends continuously and raises an alert hours before a shortage occurs, paired with a concrete rebalancing proposal the dispatcher can approve in one tap.
+
+---
+
+## Components
+
+```
+internal/usecase/prediction/
+├── usecase.go     — orchestration: loop, analyze, alert, propose
+└── wma.go         — pure math: WMA, shortfall, haversine, scoring
+```
+
+The AI repo (`internal/repo/persistent/ai_postgres.go`) handles all database reads/writes for the module.
+
+---
+
+## Algorithm: Weighted Moving Average (WMA)
+
+### Why WMA
+
+At logistics scale, WMA is the right trade-off: it's explainable to non-technical judges, straightforward to implement correctly, and produces results that are easy to verify in a demo. More complex models (LSTM, Prophet) can be swapped in later without changing any other part of the system — the interface boundary is already drawn.
+
+### How It Works
+
+For every active `(delivery_point, resource)` pair, the engine fetches the last 14 demand readings and computes two weighted averages:
+
+- **Short-term average** — last 3 readings (recent trend)
+- **Long-term average** — all 14 readings (baseline)
+
+More recent readings carry proportionally higher weight. Reading at position `i` (1-indexed from oldest) gets weight `i`.
+
+```
+weightedAvg([20, 20, 20, 55, 55, 55], n=3)
+  = (55×1 + 55×2 + 55×3) / (1+2+3)
+  = 330 / 6
+  = 55.0
+```
+
+### Trigger Condition
+
+An alert fires when:
+
+```
+divergence = (shortTermAvg - longTermAvg) / longTermAvg >= 0.20
+```
+
+A 20% short-term surge above the baseline is the threshold.
+
+### Confidence Score
+
+```
+confidence = min(0.5 + (divergence - 0.20) / 0.40, 1.0)
+```
+
+| Divergence | Confidence | Label |
+|---|---|---|
+| 20% (threshold) | 0.50 | Elevated |
+| 40% | 0.75 | High |
+| 60%+ | 1.00 | Critical |
+
+The confidence score appears on every alert and is used to sort the alerts list (highest confidence first).
+
+### Shortfall Estimation
+
+Once a trend is detected, the engine estimates how many hours remain before stock runs out:
+
+```
+avgIntervalHours = totalTimeSpan / (numReadings - 1)
+shortfallHours   = (totalStock / shortTermAvg) * avgIntervalHours
+```
+
+An alert is only created if `shortfallHours < 48`. This prevents noise from slow-moving resources where a trend is real but not urgent.
+
+---
+
+## Rebalancing Proposal
+
+When an alert is created, the engine immediately generates an optimal transfer plan:
+
+### Step 1 — Find surplus warehouses
+
+For every warehouse holding the resource:
+```
+surplus = quantity × (1 - 0.20)   // keep 20% as safety stock
+```
+Warehouses with `surplus <= 0` are excluded.
+
+### Step 2 — Rank by score
+
+```
+score = (surplus × 0.6) - (normalizedDistance × 0.4)
+```
+
+Distance is calculated with the Haversine formula using actual lat/lon coordinates. It's normalized to `[0, 1]` across all candidates.
+
+This formula prioritizes nearby warehouses with large surplus. Adjusting the weights changes the bias between proximity and supply volume.
+
+### Step 3 — Greedy allocation
+
+```
+neededQty = shortTermAvg × 2   // buffer: 2 demand periods
+```
+
+Warehouses are drawn from in ranked order until `neededQty` is covered. Each transfer records:
+- `from_warehouse_id`
+- `quantity`
+- `estimated_arrival_hours` = distance / 60 km/h
+
+### Result
+
+```json
+{
+  "id": 12,
+  "target_point_id": 9,
+  "resource_id": 23,
+  "urgency": "predictive",
+  "confidence": 1.0,
+  "status": "pending",
+  "transfers": [
+    { "from_warehouse_id": 5, "quantity": 64, "estimated_arrival_hours": 1.4 },
+    { "from_warehouse_id": 3, "quantity": 46, "estimated_arrival_hours": 2.1 }
+  ]
+}
+```
+
+---
+
+## Background Loop
+
+```go
+// Started in main.go on application boot
+go predictionUseCase.StartPredictionLoop(ctx, c.PredictionInterval)
+```
+
+The loop runs `RunPredictions` on a ticker. Each run:
+1. Queries all distinct `(point_id, resource_id)` pairs from `demand_readings`
+2. Runs `analyzePair` for each
+3. Skips pairs that already have an open alert (no duplicates)
+4. Creates alert + proposal for pairs that are trending
+
+Interval is configurable via `PREDICTION_INTERVAL` env var (default: `1h`).
+
+### Manual Trigger
+
+For demos, skip the wait:
+
+```bash
+POST /v1/ai/run
+Authorization: Bearer <token>
+```
+
+Returns `202 Accepted` immediately; prediction runs in the background.
+
+### Post-Record Analysis
+
+When a demand reading is recorded via `POST /v1/demand-readings`, the module also runs `analyzePair` for that specific pair in a background goroutine. This means alerts can appear within seconds of a new reading being submitted, not just at the next scheduled tick.
+
+---
+
+## LLM Rationale (Optional)
+
+If `GROQ_API_KEY` is set, each alert gets a two-sentence human-readable explanation generated by Groq's `llama-3.1-8b-instant` model.
+
+The prompt includes: location name, resource name, short/long-term demand averages, divergence percentage, hours to shortfall, and confidence. The response is stored in the `rationale` column of `predictive_alerts` and returned in the API response.
+
+If the API key is absent or the call fails, the alert is still created — rationale is simply `null`. The LLM is best-effort only.
+
+---
+
+## Data Model
+
+### `demand_readings`
+| Column | Type | Notes |
+|---|---|---|
+| `point_id` | uint | References `customers.id` |
+| `resource_id` | uint | References `resources.id` |
+| `quantity` | float64 | Demand volume for this period |
+| `recorded_at` | timestamp | When the demand occurred |
+| `source` | string | `"sensor"`, `"manual"`, or `"predicted"` |
+
+### `predictive_alerts`
+| Column | Type | Notes |
+|---|---|---|
+| `point_id` | uint | Delivery point at risk |
+| `resource_id` | uint | Resource trending toward shortage |
+| `predicted_shortfall_at` | timestamp | Estimated time of stock-out |
+| `confidence` | float64 | 0.0–1.0 |
+| `status` | string | `"open"`, `"dismissed"`, `"resolved"` |
+| `proposal_id` | *uint | Linked rebalancing proposal (if generated) |
+| `rationale` | *string | LLM-generated explanation (nullable) |
+
+### `rebalancing_proposals`
+| Column | Type | Notes |
+|---|---|---|
+| `target_point_id` | uint | Where stock needs to go |
+| `resource_id` | uint | What resource |
+| `urgency` | string | Always `"predictive"` for AI-generated proposals |
+| `confidence` | float64 | Inherited from the alert |
+| `status` | string | `"pending"`, `"approved"`, `"dismissed"` |
+
+### `rebalancing_transfers`
+Each proposal has one or more transfers:
+
+| Column | Type | Notes |
+|---|---|---|
+| `proposal_id` | uint | Parent proposal |
+| `from_warehouse_id` | uint | Source warehouse |
+| `quantity` | float64 | Units to transfer |
+| `estimated_arrival_hours` | float64 | distance / 60 km/h |
+
+---
+
+## Demo Walkthrough
+
+The seed migration (`20260404130000_seed_demand_readings.up.sql`) pre-loads 14 demand readings for 10 delivery pairs:
+
+| Pair | Pattern | Expected Result |
+|---|---|---|
+| Ocean Plaza Kyiv × Tactical First Aid Kit | 11 × 20 then 3 × 55 | Critical alert, confidence=1.0 |
+| Сільпо Дніпро × Tourniquet | 11 × 20 then 3 × 55 | Critical alert, confidence=1.0 |
+| City Mall Zaporizhzhia × Generator | 11 × 20 then 3 × 55 | Critical alert, confidence=1.0 |
+| Liubava Cherkasy × Antiseptic | 11 × 20 then 3 × 55 | Critical alert, confidence=1.0 |
+| Fora Kharkiv × Power Bank | 11 × 20 then 3 × 30 | Elevated alert, confidence≈0.66 |
+| Novus Lviv × LED Flashlight | 11 × 20 then 3 × 30 | Elevated alert, confidence≈0.66 |
+| ATB Odesa × Radio | 11 × 20 then 3 × 30 | Elevated alert, confidence≈0.66 |
+| Silpo Kyiv Obolon × Water | stable at 20 | No alert |
+| French Blvd Kharkiv × Milk | stable at 20 | No alert |
+| Fora Vinnytsia × Bread | stable at 20 | No alert |
+
+After `make migrate-up`, run `POST /v1/ai/run` to generate all 7 alerts instantly.
+
+---
+
+## Scalability Path
+
+The WMA model is intentionally swappable. The `aiRepo` interface is the only dependency; replacing the algorithm requires no changes outside `usecase/prediction/wma.go`:
+
+- **Linear regression** — fit a line to the last 30 readings, extrapolate N periods forward
+- **Facebook Prophet** — handles seasonality and missing data; requires a Python sidecar
+- **Lightweight LSTM** — per-pair model trained on rolling buffers; independent scaling as a microservice
+
+The prediction engine can also be extracted into a separate service that publishes alerts to a message queue, fully decoupling it from the API latency.

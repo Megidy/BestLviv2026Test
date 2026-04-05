@@ -1,9 +1,12 @@
+import { AlertTriangle, MapPin, Package, ShieldAlert } from 'lucide-react';
+
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
 import { useMap } from '@/features/map/hooks/useMap';
 import { formatDateTime } from '@/shared/lib/formatters';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { Card, CardContent } from '@/shared/ui/Card';
+import { cn } from '@/shared/lib/cn';
 import { MapPanel } from '@/widgets/MapPanel';
 import { ResourcePanel } from '@/widgets/ResourcePanel';
 
@@ -34,24 +37,36 @@ export function DashboardPage() {
       value: points.length,
       color: 'text-primary',
       glow: 'shadow-[0_0_12px_rgba(145,98,29,0.12)]',
+      icon: MapPin,
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10',
     },
     {
       label: 'Open alerts',
       value: alerts.length,
       color: 'text-danger',
       glow: 'shadow-[0_0_12px_rgba(160,69,53,0.12)]',
+      icon: AlertTriangle,
+      iconColor: 'text-danger',
+      iconBg: 'bg-danger/10',
     },
     {
       label: 'Resources tracked',
       value: items.length,
       color: 'text-success',
       glow: 'shadow-[0_0_12px_rgba(78,122,81,0.12)]',
+      icon: Package,
+      iconColor: 'text-success',
+      iconBg: 'bg-success/10',
     },
     {
       label: 'Critical points',
       value: points.filter((point) => point.status === 'critical').length,
       color: 'text-warning',
       glow: 'shadow-[0_0_12px_rgba(169,122,32,0.12)]',
+      icon: ShieldAlert,
+      iconColor: 'text-warning',
+      iconBg: 'bg-warning/10',
     },
   ];
 
@@ -65,17 +80,14 @@ export function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {kpis.map((item) => (
-          <Card key={item.label} className={item.glow}>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-text-muted">
-                {item.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className={`text-3xl font-bold ${item.color}`}>
-                {item.value}
-              </p>
-            </CardContent>
+          <Card key={item.label} className={cn('flex min-h-[88px] items-center p-5', item.glow)}>
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${item.iconBg}`}>
+              <item.icon size={22} className={item.iconColor} />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-text-muted">{item.label}</p>
+              <p className={`text-3xl font-bold ${item.color}`}>{item.value}</p>
+            </div>
           </Card>
         ))}
       </div>
@@ -100,18 +112,16 @@ export function DashboardPage() {
         />
       </div>
 
-      <Card>
-        <CardContent className="flex items-center justify-between py-4">
-          <p className="text-sm text-text-muted">
-            {isLoading
-              ? 'Synchronizing live data…'
-              : `Synchronized: ${formatDateTime(new Date().toISOString())}`}
-          </p>
-          <span className="flex items-center gap-2 text-sm font-medium text-text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-            {isLoading ? 'Loading' : 'Live'}
-          </span>
-        </CardContent>
+      <Card className="flex min-h-[52px] items-center justify-between px-5">
+        <p className="text-sm text-text-muted">
+          {isLoading
+            ? 'Synchronizing live data…'
+            : `Synchronized: ${formatDateTime(new Date().toISOString())}`}
+        </p>
+        <span className="flex items-center gap-2 text-sm font-medium text-text-muted">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+          {isLoading ? 'Loading' : 'Live'}
+        </span>
       </Card>
     </div>
   );

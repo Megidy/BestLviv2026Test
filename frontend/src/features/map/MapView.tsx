@@ -1,7 +1,9 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, useMap as useLeafletMap } from 'react-leaflet';
+import { SlidersHorizontal, X } from 'lucide-react';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
@@ -10,6 +12,7 @@ import { useNearestStock } from '@/features/map/useNearestStock';
 import type { MapPoint, MapPointStatus, NearestStockResult } from '@/shared/api';
 import { formatNumber, mapStatusTone } from '@/shared/lib/formatters';
 import { Badge } from '@/shared/ui/Badge';
+import { cn } from '@/shared/lib/cn';
 
 const STATUS_COLOR: Record<MapPointStatus, string> = {
   normal: '#22c55e',
@@ -197,12 +200,13 @@ function FilterBar({
   const filters: Filter[] = ['all', 'critical', 'elevated', 'predictive', 'normal'];
 
   return (
-    <div className="absolute left-4 top-4 z-[1000] flex gap-1.5 rounded-xl border border-border bg-background/90 p-1.5 shadow backdrop-blur">
+    <div className="flex max-w-[calc(100%-2rem)] overflow-x-auto rounded-xl border border-border bg-background/90 p-1.5 shadow backdrop-blur sm:max-w-[24rem]">
       {filters.map((filter) => (
         <button
           key={filter}
           onClick={() => onChange(filter)}
-          className={`rounded-lg px-3 py-1 text-xs font-medium capitalize transition-colors ${
+          aria-pressed={active === filter}
+          className={`shrink-0 rounded-lg px-3 py-1 text-xs font-medium capitalize transition-colors ${
             active === filter
               ? 'bg-primary text-background'
               : 'text-text-muted hover:bg-white/5 hover:text-text'
@@ -244,7 +248,7 @@ function SidePanel({
       : undefined;
 
   return (
-    <div className="absolute right-4 top-4 z-[1000] w-72 rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur">
+    <div className="absolute bottom-4 left-4 right-4 z-[1000] rounded-xl border border-border bg-background/95 p-4 shadow-xl backdrop-blur sm:bottom-auto sm:left-auto sm:right-4 sm:top-4 sm:w-72">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <p className="font-semibold text-text">{selectedPoint.name}</p>
@@ -351,17 +355,17 @@ function SidePanel({
   );
 }
 
-type MapViewProps = {
-  compact?: boolean;
-};
-
-export function MapView({ compact = false }: MapViewProps) {
+export function MapView() {
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get("focusId") ? Number(searchParams.get("focusId")) : null;
+  const focusType = searchParams.get("focusType") ?? null;
   const { user } = useAuth();
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<MapPoint | null>(null);
   const [selectedResourceId, setSelectedResourceId] = useState<number | undefined>();
   const [needed, setNeeded] = useState(100);
   const [filter, setFilter] = useState<Filter>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { items } = useInventory({
     enabled: Boolean(user?.location_id),
@@ -398,6 +402,14 @@ export function MapView({ compact = false }: MapViewProps) {
       setSelectedResourceId(resourceOptions[0].id);
     }
   }, [resourceOptions, selectedResourceId]);
+
+  useEffect(() => {
+    if (focusId && points.length > 0) {
+      const target = points.find((p) => p.id === focusId && (focusType ? p.type === focusType : true));
+      if (target) handleSelectPoint(target);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, focusType, points]);
 
   const stockByWarehouseId = useMemo(
     () =>
@@ -494,40 +506,122 @@ export function MapView({ compact = false }: MapViewProps) {
         </div>
       ) : null}
 
-      <FilterBar active={filter} onChange={setFilter} />
-
-      <div className="absolute left-4 top-16 z-[1000] flex w-[min(28rem,calc(100%-2rem))] flex-wrap gap-2 rounded-xl border border-border bg-background/90 p-3 shadow backdrop-blur">
-        <select
-          className="h-10 min-w-[12rem] rounded-xl border border-border bg-surface/80 px-3 text-sm text-text outline-none"
-          value={selectedResourceId ?? ''}
-          onChange={(event) => {
-            setSelectedResourceId(
-              event.target.value === '' ? undefined : Number(event.target.value),
-            );
-          }}
+      {/* ── Mobile: single icon button + overlay ── */}
+      <div className="absolute left-4 top-4 z-[1000] sm:hidden">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((prev) => !prev)}
+          aria-label="Open map filters"
+          aria-expanded={filtersOpen}
+          className={cn(
+            'flex h-9 w-9 items-center justify-center rounded-xl border border-border shadow backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+            filtersOpen
+              ? 'bg-primary text-background'
+              : 'bg-background/90 text-text-muted hover:text-text',
+          )}
         >
-          {resourceOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+          <SlidersHorizontal size={16} />
+        </button>
 
-        <input
-          className="h-10 w-28 rounded-xl border border-border bg-surface/80 px-3 text-sm text-text outline-none"
-          min={1}
-          step={1}
-          type="number"
-          value={needed}
-          onChange={(event) => setNeeded(Number(event.target.value) || 0)}
-        />
+        {filtersOpen ? (
+          <div className="absolute left-0 top-11 w-64 rounded-xl border border-border bg-background/95 p-3 shadow-xl backdrop-blur">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-medium uppercase tracking-[0.15em] text-text-muted">Filters</p>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                aria-label="Close filters"
+                className="text-text-muted transition-colors hover:text-text"
+              >
+                <X size={14} />
+              </button>
+            </div>
 
-        {!compact ? (
-          <p className="flex items-center text-xs text-text-muted">
-            Click a customer point to evaluate the nearest warehouses with surplus
-            stock after the 20% safety reserve.
-          </p>
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {(['all', 'critical', 'elevated', 'predictive', 'normal'] as Filter[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  aria-pressed={filter === f}
+                  className={cn(
+                    'rounded-lg px-3 py-1 text-xs font-medium capitalize transition-colors',
+                    filter === f
+                      ? 'bg-primary text-background'
+                      : 'text-text-muted hover:bg-white/5 hover:text-text',
+                  )}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2 border-t border-border pt-3">
+              <div className="space-y-1">
+                <label className="text-xs text-text-muted">Resource</label>
+                <select
+                  aria-label="Select resource"
+                  className="h-9 w-full appearance-none rounded-xl border border-border bg-surface/80 pl-3 pr-7 text-sm text-text outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23D1C1A7\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+                  value={selectedResourceId ?? ''}
+                  onChange={(event) => setSelectedResourceId(event.target.value === '' ? undefined : Number(event.target.value))}
+                >
+                  {resourceOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-text-muted">Quantity needed</label>
+                <input
+                  aria-label="Quantity needed"
+                  className="h-9 w-full rounded-xl border border-border bg-surface/80 px-3 text-sm text-text outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  min={1}
+                  max={1000000}
+                  step={1}
+                  type="number"
+                  value={needed}
+                  onChange={(event) => setNeeded(Math.min(1000000, Math.max(1, Number(event.target.value) || 1)))}
+                />
+              </div>
+            </div>
+          </div>
         ) : null}
+      </div>
+
+      {/* ── Desktop: stacked filter bar + controls ── */}
+      <div className="absolute left-4 top-4 z-[1000] hidden flex-col gap-2 sm:flex">
+        <FilterBar active={filter} onChange={setFilter} />
+
+        <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-background/90 p-3 shadow backdrop-blur">
+          <select
+            aria-label="Select resource"
+            className="h-10 min-w-[88px] appearance-none rounded-xl border border-border bg-surface/80 pl-3 pr-7 text-sm text-text outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23D1C1A7\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            value={selectedResourceId ?? ''}
+            onChange={(event) => {
+              setSelectedResourceId(
+                event.target.value === '' ? undefined : Number(event.target.value),
+              );
+            }}
+          >
+            {resourceOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+
+          <input
+            aria-label="Quantity needed"
+            className="h-10 w-24 rounded-xl border border-border bg-surface/80 px-3 text-sm text-text outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            min={1}
+            max={1000000}
+            step={1}
+            type="number"
+            value={needed}
+            onChange={(event) => setNeeded(Math.min(1000000, Math.max(1, Number(event.target.value) || 1)))}
+          />
+        </div>
       </div>
 
       {selectedPoint ? (

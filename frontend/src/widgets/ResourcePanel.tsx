@@ -68,7 +68,7 @@ export function ResourcePanel({ items }: ResourcePanelProps) {
           locationItems.map((item) => (
             <Link
               key={item.id}
-              to="/map"
+              to={`/map?focusId=${item.id}&focusType=${item.type}`}
               className="group flex items-center justify-between rounded-xl border border-border/60 bg-surface/50 px-4 py-3.5 transition-all duration-200 hover:border-primary/20 hover:bg-white/[0.03] hover:shadow-glow"
             >
               <div>

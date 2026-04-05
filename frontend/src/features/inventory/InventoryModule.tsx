@@ -74,69 +74,110 @@ export function InventoryModule() {
           <CardTitle>Inventory list</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Resource</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Available</TableHead>
-                <TableHead className="text-right">Safety stock</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead className="text-right">Updated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
-                    Loading inventory…
-                  </TableCell>
-                </TableRow>
-              ) : error ? (
-                <TableRow>
-                  <TableCell className="py-10 text-center text-danger" colSpan={7}>
-                    {error}
-                  </TableCell>
-                </TableRow>
-              ) : items.length === 0 ? (
-                <TableRow>
-                  <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
-                    No inventory matches the current filters.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                items.map((item) => (
-                <TableRow key={item.inventoryId} className="hover:bg-accent/60">
-                  <TableCell className="font-medium">
+          {/* Mobile card list — hidden on md+ */}
+          <div className="space-y-3 md:hidden">
+            {isLoading ? (
+              <p className="py-10 text-center text-sm text-text-muted">Loading inventory…</p>
+            ) : error ? (
+              <p className="py-10 text-center text-sm text-danger">{error}</p>
+            ) : items.length === 0 ? (
+              <p className="py-10 text-center text-sm text-text-muted">No inventory matches the current filters.</p>
+            ) : (
+              items.map((item) => (
+                <div
+                  key={item.inventoryId}
+                  className="rounded-xl border border-border bg-surface/50 p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
                     <Link
                       to={`/resource/${item.resourceId}`}
-                      className="transition-colors hover:text-primary"
+                      className="text-sm font-semibold text-text transition-colors hover:text-primary"
                     >
                       {item.name}
                     </Link>
-                  </TableCell>
-                  <TableCell className="text-text-muted">
-                    {item.category}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {formatNumber(item.quantity)}
-                  </TableCell>
-                  <TableCell className="text-right text-text-muted">
-                    {formatNumber(item.allocatableQuantity)}
-                  </TableCell>
-                  <TableCell className="text-right text-text-muted">
-                    {formatNumber(item.safetyStock)}
-                  </TableCell>
-                  <TableCell className="text-text-muted">{item.unit}</TableCell>
-                  <TableCell className="text-right text-text-muted">
-                    {formatDateTime(item.updatedAt)}
-                  </TableCell>
+                    <span className="shrink-0 rounded-lg border border-border px-2 py-0.5 text-xs text-text-muted">
+                      {item.category}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <p className="text-text-muted">Quantity</p>
+                      <p className="mt-0.5 font-semibold text-text">{formatNumber(item.quantity)} {item.unit}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted">Available</p>
+                      <p className="mt-0.5 text-text">{formatNumber(item.allocatableQuantity)} {item.unit}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted">Safety stock</p>
+                      <p className="mt-0.5 text-text">{formatNumber(item.safetyStock)} {item.unit}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted">Updated</p>
+                      <p className="mt-0.5 text-text">{formatDateTime(item.updatedAt)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop table — hidden on mobile */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Resource</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="text-right">Available</TableHead>
+                  <TableHead className="text-right">Safety stock</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead className="text-right">Updated</TableHead>
                 </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
+                      Loading inventory…
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-danger" colSpan={7}>
+                      {error}
+                    </TableCell>
+                  </TableRow>
+                ) : items.length === 0 ? (
+                  <TableRow>
+                    <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
+                      No inventory matches the current filters.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  items.map((item) => (
+                    <TableRow key={item.inventoryId} className="hover:bg-accent/60">
+                      <TableCell className="font-medium">
+                        <Link
+                          to={`/resource/${item.resourceId}`}
+                          className="transition-colors hover:text-primary"
+                        >
+                          {item.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-text-muted">{item.category}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatNumber(item.quantity)}</TableCell>
+                      <TableCell className="text-right text-text-muted">{formatNumber(item.allocatableQuantity)}</TableCell>
+                      <TableCell className="text-right text-text-muted">{formatNumber(item.safetyStock)}</TableCell>
+                      <TableCell className="text-text-muted">{item.unit}</TableCell>
+                      <TableCell className="text-right text-text-muted">{formatDateTime(item.updatedAt)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -157,9 +198,7 @@ export function InventoryModule() {
             variant="ghost"
             size="sm"
             disabled={page >= totalPages}
-            onClick={() =>
-              setPage((current) => Math.min(current + 1, totalPages))
-            }
+            onClick={() => setPage((current) => Math.min(current + 1, totalPages))}
           >
             Next
           </Button>
