@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'data/api_exception.dart';
@@ -48,6 +50,7 @@ class TerminalExperience extends StatefulWidget {
 class _TerminalExperienceState extends State<TerminalExperience> {
   static const int _minRequestQuantity = 1;
   static const int _maxRequestQuantity = 1000000;
+  static const Duration _backgroundRefreshInterval = Duration(seconds: 8);
 
   final AppRepository _repository = RemoteAppRepository();
 
@@ -74,6 +77,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   int _requestQuantity = 100;
   int _navIndex = 0;
   AppScreen _detailBackScreen = AppScreen.home;
+  int? _mapFocusPointId;
 
   bool _isRestoringSession = true;
   bool _isAuthenticating = false;
@@ -103,7 +107,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   int _deliveryRequestsTotal = 0;
   int _allocationsTotal = 0;
   String? _requestsStatusFilter;
-  String? _requestsPriorityFilter;
   String? _allocationsStatusFilter;
   int _requestsPage = 1;
   int _allocationsPage = 1;
@@ -116,15 +119,40 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   List<NearestStockResult> _nearestStockResults = const [];
   List<QueueItem> _queue = const [];
   ResourceRecord? _resource;
+  bool _isOnline = true;
+  DateTime? _lastOnlineSyncAt;
+  int _pendingMutationCount = 0;
+  bool _isSyncingQueue = false;
+  Timer? _backgroundRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    _isOnline = _repository.isOnlineListenable.value;
+    _pendingMutationCount = _repository.pendingMutationCountListenable.value;
+    _isSyncingQueue = _repository.isSyncingQueueListenable.value;
+    _repository.isOnlineListenable.addListener(_handleConnectivityChanged);
+    _repository.pendingMutationCountListenable.addListener(
+      _handlePendingMutationCountChanged,
+    );
+    _repository.isSyncingQueueListenable.addListener(_handleQueueSyncChanged);
+    _backgroundRefreshTimer = Timer.periodic(
+      _backgroundRefreshInterval,
+      (_) {
+        unawaited(_runBackgroundRefresh());
+      },
+    );
     _restoreSession();
   }
 
   @override
   void dispose() {
+    _backgroundRefreshTimer?.cancel();
+    _repository.isOnlineListenable.removeListener(_handleConnectivityChanged);
+    _repository.pendingMutationCountListenable.removeListener(
+      _handlePendingMutationCountChanged,
+    );
+    _repository.isSyncingQueueListenable.removeListener(_handleQueueSyncChanged);
     _usernameController.dispose();
     _passwordController.dispose();
     _arriveTillController.dispose();
@@ -137,6 +165,100 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _nearestPointIdController.dispose();
     _nearestQuantityController.dispose();
     super.dispose();
+  }
+
+  void _handleConnectivityChanged() {
+    final nextValue = _repository.isOnlineListenable.value;
+    if (!mounted || _isOnline == nextValue) {
+      return;
+    }
+
+    setState(() {
+      _isOnline = nextValue;
+    });
+
+    if (nextValue) {
+      unawaited(_runReconnectSync());
+    }
+  }
+
+  void _handlePendingMutationCountChanged() {
+    if (!mounted) {
+      return;
+    }
+
+    final nextValue = _repository.pendingMutationCountListenable.value;
+    final previousValue = _pendingMutationCount;
+    setState(() {
+      _pendingMutationCount = nextValue;
+    });
+
+    if (_userProfile == null) {
+      return;
+    }
+
+    if (previousValue > 0 && nextValue == 0 && _isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connection restored. All queued offline actions were synced.'),
+        ),
+      );
+      unawaited(_runBackgroundRefresh());
+    }
+  }
+
+  void _handleQueueSyncChanged() {
+    if (!mounted) {
+      return;
+    }
+
+    final nextValue = _repository.isSyncingQueueListenable.value;
+    final previousValue = _isSyncingQueue;
+    setState(() {
+      _isSyncingQueue = nextValue;
+    });
+
+    if (_userProfile == null) {
+      return;
+    }
+
+    if (!previousValue && nextValue && _pendingMutationCount > 0 && _isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Reconnected. Syncing queued offline actions ($_pendingMutationCount)...',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _runReconnectSync() async {
+    if (!mounted || _userProfile == null) {
+      return;
+    }
+
+    await _repository.processPendingMutations();
+    if (!mounted) {
+      return;
+    }
+
+    await _runBackgroundRefresh();
+  }
+
+  Future<void> _runBackgroundRefresh() async {
+    if (!mounted || _userProfile == null || _isRestoringSession) {
+      return;
+    }
+    if (_isAuthenticating ||
+        _isRefreshingData ||
+        _isLoadingRequests ||
+        _isMutatingRequest ||
+        _isSyncingQueue) {
+      return;
+    }
+
+    await _refreshCoreData();
   }
 
   Future<void> _restoreSession() async {
@@ -258,14 +380,19 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       }
 
       setState(() {
+        final isOnlineNow = _repository.isOnlineListenable.value;
         _inventoryOverview = inventoryOverview;
         _mapPoints = mapPoints;
         _predictiveAlerts = predictiveAlerts;
         _queue = buildQueueFromInventory(
           inventoryOverview: inventoryOverview,
           predictiveAlerts: predictiveAlerts,
+          isOnline: isOnlineNow,
         );
-        _resource = _buildResourceRecord(inventoryOverview);
+        _resource = _buildResourceRecord(
+          inventoryOverview,
+          isOnline: isOnlineNow,
+        );
         if (_demandPointIdController.text.trim().isEmpty) {
           _demandPointIdController.text = _userProfile!.locationId.toString();
         }
@@ -283,6 +410,10 @@ class _TerminalExperienceState extends State<TerminalExperience> {
           _nearestPointIdController.text = _userProfile!.locationId.toString();
         }
         _isRefreshingData = false;
+        _isOnline = isOnlineNow;
+        if (_isOnline) {
+          _lastOnlineSyncAt = DateTime.now();
+        }
         if (forceHome || _currentScreen == AppScreen.login) {
           _currentScreen = AppScreen.home;
           _navIndex = 0;
@@ -346,7 +477,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     setState(() {
       _resource = buildResourceRecordFromItem(
         item: item,
-        lastUpdatedLabel: 'Live sync',
+        lastUpdatedLabel: _isOnline ? 'Live sync' : 'Offline cache',
       );
       _detailBackScreen = AppScreen.inventory;
     });
@@ -463,6 +594,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _currentScreen = AppScreen.login;
     _navIndex = 0;
     _detailBackScreen = AppScreen.home;
+    _mapFocusPointId = null;
     _isRestoringSession = false;
     _isAuthenticating = false;
     _isRefreshingData = false;
@@ -490,7 +622,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _deliveryRequestsTotal = 0;
     _allocationsTotal = 0;
     _requestsStatusFilter = null;
-    _requestsPriorityFilter = null;
     _allocationsStatusFilter = null;
     _requestsPage = 1;
     _allocationsPage = 1;
@@ -501,6 +632,10 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _nearestStockResults = const [];
     _queue = const [];
     _resource = null;
+    _isOnline = _repository.isOnlineListenable.value;
+    _lastOnlineSyncAt = null;
+    _pendingMutationCount = _repository.pendingMutationCountListenable.value;
+    _isSyncingQueue = _repository.isSyncingQueueListenable.value;
 
     _passwordController.clear();
     _arriveTillController.clear();
@@ -531,6 +666,17 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       await _refreshCoreData();
     } catch (error) {
       if (!mounted) {
+        return;
+      }
+
+      if (_handleQueuedMutationError(
+        error,
+        onQueued: () {
+          setState(() {
+            _isRunningAlertAction = false;
+          });
+        },
+      )) {
         return;
       }
 
@@ -625,6 +771,21 @@ class _TerminalExperienceState extends State<TerminalExperience> {
         return;
       }
 
+      if (_handleQueuedMutationError(
+        error,
+        onQueued: () {
+          _arriveTillController.clear();
+          setState(() {
+            _isSubmittingRequest = false;
+            _requestError = null;
+            _currentScreen = AppScreen.home;
+            _navIndex = 0;
+          });
+        },
+      )) {
+        return;
+      }
+
       final readableError = _presentApiError(
         error,
         forbiddenMessage:
@@ -673,6 +834,18 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       });
     } catch (error) {
       if (!mounted) {
+        return;
+      }
+
+      if (_handleQueuedMutationError(
+        error,
+        onQueued: () {
+          setState(() {
+            _isDemandBusy = false;
+            _demandError = null;
+          });
+        },
+      )) {
         return;
       }
 
@@ -752,21 +925,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     }
   }
 
-  void _openRebalancingProposals() {
-    if (!_canUseRebalancing) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Rebalancing proposals are available only for dispatcher accounts.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    _goTo(AppScreen.rebalancingProposals);
-  }
-
   Future<void> _openProposalFromAlert(PredictiveAlert alert) async {
     if (!_canUseRebalancing) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -790,6 +948,44 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _proposalIdController.text = proposalId.toString();
     _goTo(AppScreen.rebalancingProposals);
     await _loadRebalancingProposal();
+  }
+
+  int? _resolveMapFocusPointId(PredictiveAlert alert) {
+    final directId = alert.pointId;
+    if (directId != null && directId > 0) {
+      return directId;
+    }
+
+    final locationLabel = alert.locationLabel.trim().toLowerCase();
+    if (locationLabel.isEmpty) {
+      return null;
+    }
+
+    for (final point in _mapPoints) {
+      if (point.name.trim().toLowerCase() == locationLabel) {
+        return point.id;
+      }
+    }
+    for (final point in _mapPoints) {
+      final normalizedName = point.name.trim().toLowerCase();
+      if (normalizedName.contains(locationLabel) ||
+          locationLabel.contains(normalizedName)) {
+        return point.id;
+      }
+    }
+    return null;
+  }
+
+  void _openMapScreen({
+    int? focusPointId,
+  }) {
+    _mapFocusPointId = focusPointId;
+    _goTo(AppScreen.map);
+  }
+
+  void _openMapFromAlert(PredictiveAlert alert) {
+    final focusPointId = _resolveMapFocusPointId(alert);
+    _openMapScreen(focusPointId: focusPointId);
   }
 
   void _openStockNearest() {
@@ -894,6 +1090,20 @@ class _TerminalExperienceState extends State<TerminalExperience> {
         return;
       }
 
+      if (_handleQueuedMutationError(
+        error,
+        onQueued: () {
+          setState(() {
+            _isProposalBusy = false;
+            _proposalError = null;
+            _proposalStatusMessage =
+                'Action queued. It will be applied when internet is restored.';
+          });
+        },
+      )) {
+        return;
+      }
+
       final readableError = _presentApiError(
         error,
         forbiddenMessage:
@@ -976,11 +1186,9 @@ class _TerminalExperienceState extends State<TerminalExperience> {
 
   Future<void> _setRequestFilters({
     String? status,
-    String? priority,
   }) async {
     setState(() {
       _requestsStatusFilter = status;
-      _requestsPriorityFilter = priority;
       _requestsPage = 1;
     });
     await _loadDeliveryRequests();
@@ -990,26 +1198,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     setState(() {
       _allocationsStatusFilter = status;
       _allocationsPage = 1;
-    });
-    await _loadDeliveryRequests();
-  }
-
-  Future<void> _setRequestsPage(int page) async {
-    if (page < 1 || page == _requestsPage) {
-      return;
-    }
-    setState(() {
-      _requestsPage = page;
-    });
-    await _loadDeliveryRequests();
-  }
-
-  Future<void> _setAllocationsPage(int page) async {
-    if (page < 1 || page == _allocationsPage) {
-      return;
-    }
-    setState(() {
-      _allocationsPage = page;
     });
     await _loadDeliveryRequests();
   }
@@ -1028,7 +1216,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       final results = await Future.wait<dynamic>([
         _repository.getDeliveryRequests(
           status: _requestsStatusFilter,
-          priority: _requestsPriorityFilter,
           page: _requestsPage,
           pageSize: _requestsPageSize,
         ),
@@ -1086,6 +1273,19 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       if (!mounted) {
         return;
       }
+
+      if (_handleQueuedMutationError(
+        error,
+        onQueued: () {
+          setState(() {
+            _isMutatingRequest = false;
+            _deliveryError = null;
+          });
+        },
+      )) {
+        return;
+      }
+
       setState(() {
         _isMutatingRequest = false;
         _deliveryError = error.toString();
@@ -1118,6 +1318,18 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       });
     } catch (error) {
       if (!mounted) {
+        return;
+      }
+
+      if (_handleQueuedMutationError(
+        error,
+        onQueued: () {
+          setState(() {
+            _isMutatingRequest = false;
+            _deliveryError = null;
+          });
+        },
+      )) {
         return;
       }
 
@@ -1293,6 +1505,25 @@ class _TerminalExperienceState extends State<TerminalExperience> {
 
   bool get _canUseRebalancing => _userProfile?.role == UserRole.dispatcher;
 
+  bool _handleQueuedMutationError(
+    Object error, {
+    required VoidCallback onQueued,
+  }) {
+    if (error is! ApiException || !error.isQueued) {
+      return false;
+    }
+
+    onQueued();
+    if (!mounted) {
+      return true;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.message)),
+    );
+    return true;
+  }
+
   String _presentApiError(
     Object error, {
     String? forbiddenMessage,
@@ -1357,11 +1588,15 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   }
 
   void _handleNavigation(int index) {
+    if (index == 3) {
+      _openMapScreen();
+      return;
+    }
+
     final screen = switch (index) {
       0 => AppScreen.home,
       1 => AppScreen.inventory,
       2 => AppScreen.scanner,
-      3 => AppScreen.map,
       4 => AppScreen.settings,
       _ => AppScreen.home,
     };
@@ -1419,6 +1654,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
         inventoryOverview.items
             .where((item) => item.health == InventoryHealth.critical)
             .length;
+    final lastSyncLabel = _formatLastSyncLabel(_lastOnlineSyncAt);
 
     return Stack(
       children: [
@@ -1440,10 +1676,11 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   alerts: _predictiveAlerts,
                   actorRole: _userProfile!.role,
                   locationLabel: _userProfile!.locationLabel,
+                  isOnline: _isOnline,
                   isBusy: _isRunningAlertAction || _isRefreshingData,
                   onDismissAlert: (alert) => _dismissAlert(alert),
                   onOpenProposal: (alert) => _openProposalFromAlert(alert),
-                  onOpenMap: (_) => _goTo(AppScreen.map),
+                  onOpenMap: (alert) => _openMapFromAlert(alert),
                   onRefresh: () => _refreshCoreData(),
                   onBack: () => _goTo(AppScreen.home),
                 ),
@@ -1453,13 +1690,17 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   locationLabel: _userProfile!.locationLabel,
                   locationTitle: locationTitle,
                   accountLabel: _userProfile!.initials,
+                  isOnline: _isOnline,
+                  lastSyncLabel: lastSyncLabel,
+                  pendingMutationCount: _pendingMutationCount,
+                  isSyncingQueue: _isSyncingQueue,
+                  alertCount: _predictiveAlerts.length,
                   activeCount: inventoryOverview.items.length,
                   pendingCount: _predictiveAlerts.length,
                   criticalCount: criticalCount,
                   onQuickScan: () => _goTo(AppScreen.scanner),
                   onRequestsTap: () => _openDeliveryRequests(),
                   onDemandReadingsTap: () => _openDemandReadings(),
-                  onRebalancingTap: () => _openRebalancingProposals(),
                   onStockNearestTap: () => _openStockNearest(),
                   onAlertsTap: () => _goTo(AppScreen.alerts),
                   onAccountTap: () => _goTo(AppScreen.settings),
@@ -1468,6 +1709,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                 ),
               AppScreen.inventory => InventoryScreen(
                   overview: inventoryOverview,
+                  isOnline: _isOnline,
                   onBack: () => _goTo(AppScreen.home),
                   onItemTap: _openInventoryItem,
                 ),
@@ -1511,33 +1753,21 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   },
                 ),
               AppScreen.requests => DeliveryRequestsScreen(
+                  actorRole: _userProfile!.role,
                   requests: _deliveryRequests,
                   allocations: _allocations,
                   totalRequests: _deliveryRequestsTotal,
                   totalAllocations: _allocationsTotal,
                   selectedRequestStatus: _requestsStatusFilter,
-                  selectedRequestPriority: _requestsPriorityFilter,
                   selectedAllocationStatus: _allocationsStatusFilter,
-                  requestsPage: _requestsPage,
-                  allocationsPage: _allocationsPage,
-                  requestsPageSize: _requestsPageSize,
-                  allocationsPageSize: _allocationsPageSize,
                   isBusy: _isLoadingRequests || _isMutatingRequest,
                   errorMessage: _deliveryError,
                   onBack: () => _goTo(AppScreen.home),
                   onRefresh: () => _loadDeliveryRequests(),
-                  onRequestStatusFilterChange: (value) => _setRequestFilters(
-                    status: value,
-                    priority: _requestsPriorityFilter,
-                  ),
-                  onRequestPriorityFilterChange: (value) => _setRequestFilters(
-                    status: _requestsStatusFilter,
-                    priority: value,
-                  ),
+                  onRequestStatusFilterChange: (value) =>
+                      _setRequestFilters(status: value),
                   onAllocationStatusFilterChange: (value) =>
                       _setAllocationStatusFilter(value),
-                  onRequestsPageChange: (page) => _setRequestsPage(page),
-                  onAllocationsPageChange: (page) => _setAllocationsPage(page),
                   onRunAllocate: () => _runAllocatePending(),
                   onOpenRequest: (request) => _openDeliveryRequestDetail(request),
                 ),
@@ -1625,6 +1855,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                 ),
               AppScreen.map => MapScreen(
                   points: _mapPoints,
+                  initialFocusPointId: _mapFocusPointId,
                   onBack: () => _goTo(AppScreen.home),
                 ),
               AppScreen.settings => SettingsScreen(
@@ -1635,14 +1866,14 @@ class _TerminalExperienceState extends State<TerminalExperience> {
             },
           ),
         ),
-        if (_isRefreshingData)
-          const Positioned(
+        if (_isRefreshingData || _isSyncingQueue)
+          Positioned(
             top: 12,
             left: 18,
             right: 18,
             child: LinearProgressIndicator(
               minHeight: 3,
-              color: AppColors.warmGold,
+              color: _isSyncingQueue ? AppColors.greenOk : AppColors.warmGold,
               backgroundColor: AppColors.stroke,
             ),
           ),
@@ -1650,7 +1881,10 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     );
   }
 
-  ResourceRecord _buildResourceRecord(InventoryOverview overview) {
+  ResourceRecord _buildResourceRecord(
+    InventoryOverview overview, {
+    required bool isOnline,
+  }) {
     if (overview.items.isEmpty) {
       return _fallbackResource;
     }
@@ -1662,8 +1896,27 @@ class _TerminalExperienceState extends State<TerminalExperience> {
 
     return buildResourceRecordFromItem(
       item: preferred,
-      lastUpdatedLabel: 'Live sync',
+      lastUpdatedLabel: isOnline ? 'Live sync' : 'Offline cache',
     );
+  }
+
+  String? _formatLastSyncLabel(DateTime? timestamp) {
+    if (timestamp == null) {
+      return null;
+    }
+
+    final now = DateTime.now();
+    final sameDay =
+        timestamp.year == now.year && timestamp.month == now.month && timestamp.day == now.day;
+    final hour = timestamp.hour.toString().padLeft(2, '0');
+    final minute = timestamp.minute.toString().padLeft(2, '0');
+    if (sameDay) {
+      return 'Last sync $hour:$minute';
+    }
+
+    final month = timestamp.month.toString().padLeft(2, '0');
+    final day = timestamp.day.toString().padLeft(2, '0');
+    return 'Last sync $day/$month $hour:$minute';
   }
 
   ResourceRecord get _fallbackResource => fallbackResourceRecord;

@@ -24,7 +24,13 @@ export function MapPanel({
       </CardHeader>
       <CardContent className="h-[26rem]">
         <div className="h-full overflow-hidden rounded-xl">
-          <MapView />
+          <MapView
+            statusFilter="all"
+            typeFilter="all"
+            selectedResourceId={undefined}
+            neededQty={100}
+            compact
+          />
         </div>
       </CardContent>
     </Card>

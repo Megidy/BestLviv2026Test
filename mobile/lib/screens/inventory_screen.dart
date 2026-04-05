@@ -8,11 +8,13 @@ class InventoryScreen extends StatefulWidget {
   const InventoryScreen({
     super.key,
     required this.overview,
+    required this.isOnline,
     required this.onBack,
     required this.onItemTap,
   });
 
   final InventoryOverview overview;
+  final bool isOnline;
   final VoidCallback onBack;
   final ValueChanged<InventoryItem> onItemTap;
 
@@ -111,7 +113,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Warehouse ${widget.overview.locationLabel} • Live sync',
+            'Warehouse ${widget.overview.locationLabel} • ${widget.isOnline ? 'Live sync' : 'Offline cache'}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.softText,
             ),

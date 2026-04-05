@@ -138,6 +138,7 @@ class PredictiveAlert {
     required this.severity,
     required this.shortageNote,
     required this.updatedLabel,
+    this.pointId,
     this.proposalId,
     this.confidence,
     this.predictedShortfallAt,
@@ -149,6 +150,7 @@ class PredictiveAlert {
   final PredictiveAlertSeverity severity;
   final String shortageNote;
   final String updatedLabel;
+  final int? pointId;
   final int? proposalId;
   final num? confidence;
   final DateTime? predictedShortfallAt;

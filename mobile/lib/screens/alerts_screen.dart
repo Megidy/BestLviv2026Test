@@ -18,6 +18,7 @@ class AlertsScreen extends StatefulWidget {
     required this.alerts,
     required this.actorRole,
     required this.locationLabel,
+    required this.isOnline,
     required this.isBusy,
     required this.onDismissAlert,
     required this.onOpenProposal,
@@ -29,6 +30,7 @@ class AlertsScreen extends StatefulWidget {
   final List<PredictiveAlert> alerts;
   final UserRole actorRole;
   final String locationLabel;
+  final bool isOnline;
   final bool isBusy;
   final ValueChanged<PredictiveAlert> onDismissAlert;
   final ValueChanged<PredictiveAlert> onOpenProposal;
@@ -168,7 +170,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ),
           const SizedBox(height: 2),
           Text(
-            '${_roleLabel(widget.actorRole)} • Warehouse ${widget.locationLabel} • Live sync',
+            '${_roleLabel(widget.actorRole)} • Warehouse ${widget.locationLabel} • ${widget.isOnline ? 'Live sync' : 'Offline cache'}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.softText,
             ),
