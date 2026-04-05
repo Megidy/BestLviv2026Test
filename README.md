@@ -112,7 +112,23 @@ Every delivery action (create, allocate, approve, dispatch, deliver, cancel) is 
 
 ---
 
-### 8. Dashboard
+### 8. Mobile App (Flutter)
+
+A dedicated Flutter application for warehouse workers operating in the field — designed around the brief's explicit requirement for warehouse usability.
+
+Key design constraints:
+- **Min 48×48px tap targets** — works with gloves
+- **16sp+ font size** — readable in poor warehouse lighting
+- **High-contrast dark theme** — visible in direct sunlight
+- **Bottom navigation** — thumb-reachable on large phones
+
+**QR scanning workflow:** Every resource shelf has a printed QR label encoding `RESOURCE:{id}:POINT:{id}`. Worker taps Scan → camera decodes → Quick Action screen appears with current stock. Three actions: update demand, flag urgent, confirm delivery. Two taps from scan to action — no searching, no typing.
+
+A demand update recorded on the phone triggers the AI analysis immediately in the backend. An alert can appear on the dispatcher's desktop within seconds of the scan — demonstrable in real time.
+
+**Platform:** Android + iOS from a single Dart codebase.
+
+### 9. Dashboard
 
 At-a-glance operations summary: total inventory value, active alert count, pending request count, recent allocation status. Data is pulled live from the same API endpoints.
 
@@ -157,6 +173,7 @@ At-a-glance operations summary: total inventory value, active alert count, pendi
 
 **Backend:** Go 1.25 · Echo v5 · pgx v5 · golang-migrate · swaggo  
 **Frontend:** React 18 · TypeScript · Vite · Tailwind CSS · Lucide icons · Leaflet  
+**Mobile:** Flutter 3 · Dart · iOS + Android · mobile_scanner · flutter_secure_storage  
 **Infrastructure:** Docker Compose · AWS EC2 · GitHub Actions CI/CD  
 **AI:** Weighted Moving Average · Haversine scoring · Optional Groq LLM (llama-3.1-8b-instant)
 
@@ -269,4 +286,5 @@ The seeded database contains:
 
 - [Backend Architecture & API Reference](backend/docs/BACKEND.md)
 - [Frontend Architecture](frontend/docs/FRONTEND.md)
+- [Mobile App (Flutter)](mobile/docs/MOBILE.md)
 - [AI Prediction Module Deep-Dive](backend/docs/AI_MODULE.md)
