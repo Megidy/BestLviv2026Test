@@ -73,15 +73,44 @@ export async function getNearestStock(params: {
   customerId: number;
   needed?: number;
 }) {
+  // Diagnosis: the 400 was caused by a contract mismatch in this request builder.
+  // The frontend sent `customer_id` + `needed`, but the current backend handler
+  // for `/v1/stock/nearest` validates `point_id` and reads `quantity`.
+  // Fix: keep the same validated numeric values, but send the field names the
+  // backend actually binds today.
+  const resource_id = Number(params.resourceId);
+  const customer_id = Number(params.customerId);
+  const needed = Number(params.needed);
+
+  if (
+    !Number.isFinite(resource_id) ||
+    !Number.isFinite(customer_id) ||
+    !Number.isFinite(needed) ||
+    resource_id <= 0 ||
+    customer_id <= 0 ||
+    needed <= 0
+  ) {
+    console.debug('[nearest-stock] skipped invalid params', {
+      resource_id,
+      customer_id,
+      needed,
+    });
+    return [];
+  }
+
+  console.debug('[nearest-stock] request params', {
+    resource_id,
+    customer_id,
+    needed,
+  });
+
   const response = await request<ApiResponse<NearestStockResult[]>>(
     endpoints.stock.nearest,
     {
       query: {
-        resource_id: params.resourceId,
-        customer_id: params.customerId,
-        point_id: params.customerId,
-        needed: params.needed,
-        quantity: params.needed,
+        resource_id,
+        point_id: customer_id,
+        quantity: needed,
       },
     },
   );
