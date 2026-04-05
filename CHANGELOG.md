@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.11](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.10...v0.1.11) (2026-04-05)
+
+
+### Features
+
+* **map:** enhance nearest stock functionality and UI improvements ([efb8dc7](https://github.com/Megidy/BestLviv2026Test/commit/efb8dc79fcad45a33025b23d09042881c6a12618))
+
+
+### Bug Fixes
+
+* user schema ([e9b0342](https://github.com/Megidy/BestLviv2026Test/commit/e9b034255c1b56712ea1af398d9edc293d17164b))
+
 ## [0.1.10](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.9...v0.1.10) (2026-04-05)
 
 
