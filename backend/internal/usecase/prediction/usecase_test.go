@@ -31,6 +31,11 @@ type stubAIRepo struct {
 	updatedProposal   entity.ProposalStatus
 }
 
+// ResolveAlertByProposalID implements [aiRepo].
+func (s *stubAIRepo) ResolveAlertByProposalID(ctx context.Context, proposalID uint) error {
+	return nil
+}
+
 func (s *stubAIRepo) GetCustomerName(ctx context.Context, customerID uint) (string, error) {
 	return "", nil
 }
