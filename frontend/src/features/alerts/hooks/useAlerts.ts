@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import {
+  AlertsConflictError,
   approveProposal,
   dismissAlert,
   getAlerts,
@@ -29,13 +30,28 @@ export function useAlerts({
   const [isLoading, setIsLoading] = useState(enabled);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [pendingActionKeys, setPendingActionKeys] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+    }, 2500);
+
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const load = useCallback(async () => {
     if (!enabled) {
       setAlerts([]);
       setTotal(0);
       setError(null);
+      setNotice(null);
       setIsLoading(false);
       return;
     }
@@ -45,8 +61,24 @@ export function useAlerts({
 
     try {
       const response = await getAlerts(page, pageSize);
-      setAlerts(Array.isArray(response.alerts) ? response.alerts : []);
+      const loadedAlerts = Array.isArray(response.alerts) ? response.alerts : [];
+      setAlerts(loadedAlerts);
       setTotal(typeof response.total === 'number' ? response.total : 0);
+
+      // Eagerly fetch proposals for all alerts so action buttons reflect
+      // current proposal status without requiring the user to expand first.
+      const proposalIds = loadedAlerts
+        .map((a) => a.proposal_id)
+        .filter((id): id is number => id !== undefined && id !== null);
+
+      if (proposalIds.length > 0) {
+        const results = await Promise.allSettled(proposalIds.map((id) => getProposal(id)));
+        const fresh: Record<number, RebalancingProposal | null> = {};
+        results.forEach((result, i) => {
+          fresh[proposalIds[i]] = result.status === 'fulfilled' ? result.value : null;
+        });
+        setProposals((current) => ({ ...current, ...fresh }));
+      }
     } catch (caught) {
       setAlerts([]);
       setTotal(0);
@@ -61,10 +93,6 @@ export function useAlerts({
   }, [load]);
 
   const loadProposal = useCallback(async (proposalId: number) => {
-    if (proposals[proposalId] !== undefined) {
-      return proposals[proposalId];
-    }
-
     try {
       const proposal = await getProposal(proposalId);
       setProposals((current) => ({
@@ -78,24 +106,105 @@ export function useAlerts({
       );
       throw caught;
     }
-  }, [proposals]);
+  }, []);
+
+  const setActionPending = useCallback((actionKey: string, pending: boolean) => {
+    setPendingActionKeys((current) => {
+      if (pending) {
+        if (current[actionKey]) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [actionKey]: true,
+        };
+      }
+
+      if (!current[actionKey]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[actionKey];
+      return next;
+    });
+  }, []);
 
   const runMutation = useCallback(
-    async (action: () => Promise<unknown>) => {
-      setIsMutating(true);
+    async (
+      actionKey: string,
+      action: () => Promise<unknown>,
+      options?: {
+        optimisticUpdate?: () => void;
+        rollback?: () => void;
+        successMessage?: string;
+      },
+    ) => {
+      if (pendingActionKeys[actionKey]) {
+        return;
+      }
+
       setError(null);
+      setNotice(null);
+      setIsMutating(true);
+      setActionPending(actionKey, true);
+      options?.optimisticUpdate?.();
 
       try {
         await action();
+        if (options?.successMessage) {
+          setNotice(options.successMessage);
+        }
         await load();
       } catch (caught) {
+        if (caught instanceof AlertsConflictError) {
+          options?.rollback?.();
+          await load();
+          return;
+        }
+
+        options?.rollback?.();
         setError(caught instanceof Error ? caught.message : 'Alert action failed');
         throw caught;
       } finally {
-        setIsMutating(false);
+        setActionPending(actionKey, false);
+        setIsMutating(
+          Object.keys(pendingActionKeys).filter((key) => key !== actionKey).length > 0,
+        );
       }
     },
-    [load],
+    [load, pendingActionKeys, setActionPending],
+  );
+
+  useEffect(() => {
+    setIsMutating(Object.keys(pendingActionKeys).length > 0);
+  }, [pendingActionKeys]);
+
+  const markAlertResolved = useCallback((alertId: number) => {
+    setAlerts((current) =>
+      current.map((alert) =>
+        alert.id === alertId ? { ...alert, status: 'resolved' } : alert,
+      ),
+    );
+  }, []);
+
+  const markProposalResolved = useCallback(
+    (proposalId: number, status: 'approved' | 'dismissed') => {
+      setAlerts((current) =>
+        current.map((alert) =>
+          alert.proposal_id === proposalId ? { ...alert, status: 'resolved' } : alert,
+        ),
+      );
+      setProposals((current) => ({
+        ...current,
+        [proposalId]:
+          current[proposalId] === null || current[proposalId] === undefined
+            ? current[proposalId]
+            : { ...current[proposalId], status },
+      }));
+    },
+    [],
   );
 
   return {
@@ -105,28 +214,40 @@ export function useAlerts({
     isLoading,
     isMutating,
     error,
+    notice,
+    pendingActionKeys,
     refetch: load,
+    clearNotice: () => setNotice(null),
     loadProposal,
-    dismissAlert: (alertId: number) => runMutation(() => dismissAlert(alertId)),
+    dismissAlert: (alertId: number) =>
+      runMutation(`dismiss-alert:${alertId}`, () => dismissAlert(alertId), {
+        optimisticUpdate: () => markAlertResolved(alertId),
+        rollback: () => void load(),
+        successMessage: 'Alert resolved.',
+      }),
     approveProposal: (proposalId: number) =>
-      runMutation(async () => {
+      runMutation(`approve-proposal:${proposalId}`, async () => {
         const proposal = await approveProposal(proposalId);
         setProposals((current) => ({
           ...current,
           [proposalId]: proposal,
         }));
+      }, {
+        optimisticUpdate: () => markProposalResolved(proposalId, 'approved'),
+        rollback: () => void load(),
+        successMessage: 'Proposal approved.',
       }),
     dismissProposal: (proposalId: number) =>
-      runMutation(async () => {
+      runMutation(`dismiss-proposal:${proposalId}`, async () => {
         await rejectProposal(proposalId);
-        setProposals((current) => ({
-          ...current,
-          [proposalId]:
-            current[proposalId] === null || current[proposalId] === undefined
-              ? current[proposalId]
-              : { ...current[proposalId], status: 'dismissed' },
-        }));
+      }, {
+        optimisticUpdate: () => markProposalResolved(proposalId, 'dismissed'),
+        rollback: () => void load(),
+        successMessage: 'Proposal rejected.',
       }),
-    runAi: () => runMutation(() => runAi()),
+    runAi: () =>
+      runMutation('run-ai', () => runAi(), {
+        successMessage: 'Prediction run started.',
+      }),
   };
 }

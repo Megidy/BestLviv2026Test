@@ -21,6 +21,7 @@ export const endpoints = {
   allocations: {
     list: '/v1/allocations',
     approve: (id: number) => `/v1/allocations/${id}/approve`,
+    reject: (id: number) => `/v1/allocations/${id}/reject`,
     dispatch: (id: number) => `/v1/allocations/${id}/dispatch`,
   },
   alerts: {

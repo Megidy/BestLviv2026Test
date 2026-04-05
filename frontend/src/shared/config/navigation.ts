@@ -4,6 +4,8 @@ import {
   Package,
   Map,
   Bell,
+  Truck,
+  ArrowLeftRight,
   ShieldCheck,
   Settings,
 } from 'lucide-react';
@@ -13,6 +15,8 @@ export type NavigationItem = {
   label: string;
   description: string;
   icon: LucideIcon;
+  /** If set, only users with one of these roles see this item. */
+  roles?: string[];
 };
 
 export const navigationItems: NavigationItem[] = [
@@ -41,10 +45,23 @@ export const navigationItems: NavigationItem[] = [
     icon: Bell,
   },
   {
+    to: '/delivery',
+    label: 'Delivery',
+    description: 'Requests & transfers',
+    icon: Truck,
+  },
+  {
+    to: '/allocations',
+    label: 'Allocations',
+    description: 'Warehouse dispatch',
+    icon: ArrowLeftRight,
+  },
+  {
     to: '/admin',
     label: 'Admin',
     description: 'Audit and controls',
     icon: ShieldCheck,
+    roles: ['admin', 'dispatcher'],
   },
 ];
 

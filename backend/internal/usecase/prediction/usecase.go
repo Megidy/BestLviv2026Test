@@ -26,6 +26,7 @@ type aiRepo interface {
 	GetOpenAlerts(ctx context.Context, limit, offset int) ([]entity.PredictiveAlert, int, error)
 	GetAlertsByPoint(ctx context.Context, pointID uint) ([]entity.PredictiveAlert, error)
 	UpdateAlertStatus(ctx context.Context, id uint, status entity.AlertStatus, proposalID *uint) error
+	ResolveAlertByProposalID(ctx context.Context, proposalID uint) error
 	InsertProposalWithTransfers(ctx context.Context, p entity.RebalancingProposal, transfers []entity.RebalancingTransfer) (entity.RebalancingProposal, error)
 	GetProposalByID(ctx context.Context, id uint) (entity.RebalancingProposal, error)
 	UpdateProposalStatus(ctx context.Context, id uint, status entity.ProposalStatus) error
@@ -259,6 +260,10 @@ func (u *UseCase) ApproveProposal(ctx context.Context, proposalID uint) (entity.
 	}
 	if err := u.repo.UpdateProposalStatus(ctx, proposalID, entity.ProposalStatusApproved); err != nil {
 		return entity.RebalancingProposal{}, err
+	}
+	// Mark the linked alert as resolved so it no longer appears in open alerts
+	if err := u.repo.ResolveAlertByProposalID(ctx, proposalID); err != nil {
+		u.logger.Warn("failed to resolve alert after proposal approval", "proposal_id", proposalID, "error", err)
 	}
 	proposal.Status = entity.ProposalStatusApproved
 	return proposal, nil
