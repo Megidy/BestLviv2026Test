@@ -125,7 +125,17 @@ export function AlertsModule() {
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-text-muted">
                       <span>ETA: {formatRelativeCountdown(alert.predicted_shortfall_at)}</span>
                       <span>·</span>
-                      <span className="capitalize">{alert.status}</span>
+                      <span className="capitalize">
+                        {(() => {
+                          const p = alert.proposal_id ? proposals[alert.proposal_id] : undefined;
+                          if (alert.status === 'dismissed') return 'Dismissed';
+                          if (alert.status === 'resolved') return 'Resolved';
+                          if (!alert.proposal_id || p === undefined || p === null) return 'Open';
+                          if (p.status === 'approved') return 'Approved';
+                          if (p.status === 'dismissed') return 'Proposal rejected';
+                          return 'Awaiting approval';
+                        })()}
+                      </span>
                     </div>
 
                     <p className="mt-2 line-clamp-2 text-sm text-text">{alert.reasoning.summary}</p>

@@ -15,6 +15,25 @@ import {
   formatPercent,
   formatRelativeCountdown,
 } from '@/shared/lib/formatters';
+
+type EffectiveStatus = {
+  label: string;
+  tone: 'info' | 'neutral' | 'success' | 'warning' | 'danger';
+};
+
+function effectiveStatus(
+  alert: AlertWithReasoning,
+  proposal?: RebalancingProposal | null,
+): EffectiveStatus {
+  if (alert.status === 'dismissed') return { label: 'Dismissed', tone: 'neutral' };
+  if (alert.status === 'resolved') return { label: 'Resolved', tone: 'success' };
+  if (!alert.proposal_id) return { label: 'Open', tone: 'info' };
+  if (proposal === undefined) return { label: 'Open', tone: 'info' };
+  if (proposal === null) return { label: 'Open', tone: 'info' };
+  if (proposal.status === 'approved') return { label: 'Approved', tone: 'success' };
+  if (proposal.status === 'dismissed') return { label: 'Proposal rejected', tone: 'warning' };
+  return { label: 'Awaiting approval', tone: 'info' };
+}
 import {
   TableCell,
   TableRow,
@@ -98,10 +117,11 @@ export function AlertRow({
             <Badge tone="info">{formatPercent(alert.confidence)} confidence</Badge>
           </div>
         </TableCell>
-        <TableCell className="text-text-muted">
-          <Badge tone={alert.status === 'resolved' ? 'neutral' : 'info'}>
-            {alert.status}
-          </Badge>
+        <TableCell>
+          {(() => {
+            const s = effectiveStatus(alert, proposal);
+            return <Badge tone={s.tone}>{s.label}</Badge>;
+          })()}
         </TableCell>
         <TableCell>
           <div
