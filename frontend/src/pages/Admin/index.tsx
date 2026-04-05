@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ShieldOff } from 'lucide-react';
 
 import { endpoints, request, unwrapApiResponse, type ApiResponse, type AuditLogResponse } from '@/shared/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
@@ -74,6 +75,22 @@ export function AdminPage() {
       ),
     [entries, search],
   );
+
+  if (error === 'forbidden') {
+    return (
+      <div className="flex h-full min-h-[60vh] flex-col items-center justify-center gap-4 text-center animate-slide-up">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-danger/20 bg-danger/10">
+          <ShieldOff size={28} className="text-danger" />
+        </div>
+        <div>
+          <p className="text-lg font-semibold text-text">Access restricted</p>
+          <p className="mt-1 text-sm text-text-muted">
+            The audit log is only available to admins.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 animate-slide-up">

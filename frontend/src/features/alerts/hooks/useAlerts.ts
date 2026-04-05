@@ -61,8 +61,24 @@ export function useAlerts({
 
     try {
       const response = await getAlerts(page, pageSize);
-      setAlerts(Array.isArray(response.alerts) ? response.alerts : []);
+      const loadedAlerts = Array.isArray(response.alerts) ? response.alerts : [];
+      setAlerts(loadedAlerts);
       setTotal(typeof response.total === 'number' ? response.total : 0);
+
+      // Eagerly fetch proposals for all alerts so action buttons reflect
+      // current proposal status without requiring the user to expand first.
+      const proposalIds = loadedAlerts
+        .map((a) => a.proposal_id)
+        .filter((id): id is number => id !== undefined && id !== null);
+
+      if (proposalIds.length > 0) {
+        const results = await Promise.allSettled(proposalIds.map((id) => getProposal(id)));
+        const fresh: Record<number, RebalancingProposal | null> = {};
+        results.forEach((result, i) => {
+          fresh[proposalIds[i]] = result.status === 'fulfilled' ? result.value : null;
+        });
+        setProposals((current) => ({ ...current, ...fresh }));
+      }
     } catch (caught) {
       setAlerts([]);
       setTotal(0);
@@ -77,10 +93,6 @@ export function useAlerts({
   }, [load]);
 
   const loadProposal = useCallback(async (proposalId: number) => {
-    if (proposals[proposalId] !== undefined) {
-      return proposals[proposalId];
-    }
-
     try {
       const proposal = await getProposal(proposalId);
       setProposals((current) => ({
@@ -94,7 +106,7 @@ export function useAlerts({
       );
       throw caught;
     }
-  }, [proposals]);
+  }, []);
 
   const setActionPending = useCallback((actionKey: string, pending: boolean) => {
     setPendingActionKeys((current) => {

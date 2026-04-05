@@ -81,7 +81,7 @@ export function InventoryModule() {
             ) : error ? (
               <p className="py-10 text-center text-sm text-danger">{error}</p>
             ) : items.length === 0 ? (
-              <p className="py-10 text-center text-sm text-text-muted">No inventory matches the current filters.</p>
+              <p className="py-10 text-center text-sm text-text-muted">No inventory matches the current filters or you are not in a warehouse.</p>
             ) : (
               items.map((item) => (
                 <div
@@ -152,7 +152,7 @@ export function InventoryModule() {
                 ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell className="py-10 text-center text-text-muted" colSpan={7}>
-                      No inventory matches the current filters.
+                      No inventory matches the current filters or you are not in a warehouse.
                     </TableCell>
                   </TableRow>
                 ) : (

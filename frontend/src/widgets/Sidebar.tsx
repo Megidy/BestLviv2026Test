@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { X } from 'lucide-react';
 
 import { navigationItems, settingsItem } from '@/shared/config/navigation';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { cn } from '@/shared/lib/cn';
 
 type SidebarProps = {
@@ -11,6 +12,11 @@ type SidebarProps = {
 };
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
+  const { user } = useAuth();
+  const visibleItems = navigationItems.filter(
+    (item) => !item.roles || (user?.role && item.roles.includes(user.role)),
+  );
+
   return (
     <>
       <div className="flex h-[73px] items-center justify-between border-b border-border px-5">
@@ -43,7 +49,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         aria-label="Main navigation"
         className="flex-1 space-y-1 px-3 py-4"
       >
-        {navigationItems.map((item) => (
+        {visibleItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
