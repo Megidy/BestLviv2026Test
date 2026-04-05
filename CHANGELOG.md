@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.0](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.11...v1.0.0) (2026-04-05)
+
+* **Stable release**
+
 ## [0.1.11](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.10...v0.1.11) (2026-04-05)
 
 
