@@ -1,3 +1,10 @@
+![Dart (Flutter)](https://img.shields.io/badge/Dart-Flutter-0175C2?style=for-the-badge&logo=dart&logoColor=white)
+![React (Vite)](https://img.shields.io/badge/React-Vite-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Echo (GoLang)](https://img.shields.io/badge/Echo-Go-000000?style=for-the-badge&logo=go&logoColor=white)
+![Postgres](https://img.shields.io/badge/PostgreSQL-DB-336791?style=for-the-badge&logo=postgresql&logoColor=white)
+![AWS EC2 (API)](https://img.shields.io/badge/AWS%20EC2-API-FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white)
+![Vercel (Web)](https://img.shields.io/badge/Vercel-Web-000000?style=for-the-badge&logo=vercel&logoColor=white)
+
 # Logisync — AI-Powered Humanitarian Logistics Platform
 
 ## Both Mobile (IOS + Android) and Web application
