@@ -12,6 +12,10 @@ class HomeScreen extends StatelessWidget {
     required this.locationLabel,
     required this.locationTitle,
     required this.accountLabel,
+    required this.isOnline,
+    required this.lastSyncLabel,
+    required this.pendingMutationCount,
+    required this.isSyncingQueue,
     required this.alertCount,
     required this.activeCount,
     required this.pendingCount,
@@ -31,6 +35,10 @@ class HomeScreen extends StatelessWidget {
   final String locationLabel;
   final String locationTitle;
   final String accountLabel;
+  final bool isOnline;
+  final String? lastSyncLabel;
+  final int pendingMutationCount;
+  final bool isSyncingQueue;
   final int alertCount;
   final int activeCount;
   final int pendingCount;
@@ -78,10 +86,30 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const StatusPill(
-                            label: 'SYSTEM ONLINE',
-                            color: AppColors.greenOk,
+                          StatusPill(
+                            label: isOnline ? 'SYSTEM ONLINE' : 'OFFLINE MODE',
+                            color: isOnline ? AppColors.greenOk : AppColors.amberWarn,
                           ),
+                          if (lastSyncLabel != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              lastSyncLabel!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.softText,
+                              ),
+                            ),
+                          ],
+                          if (pendingMutationCount > 0) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              isSyncingQueue
+                                  ? 'Sync queue: $pendingMutationCount (syncing...)'
+                                  : 'Sync queue: $pendingMutationCount (waiting for connection)',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.warmGold,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
