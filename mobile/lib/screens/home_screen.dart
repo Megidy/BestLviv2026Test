@@ -12,13 +12,13 @@ class HomeScreen extends StatelessWidget {
     required this.locationLabel,
     required this.locationTitle,
     required this.accountLabel,
+    required this.alertCount,
     required this.activeCount,
     required this.pendingCount,
     required this.criticalCount,
     required this.onQuickScan,
     required this.onRequestsTap,
     required this.onDemandReadingsTap,
-    required this.onRebalancingTap,
     required this.onStockNearestTap,
     required this.onAlertsTap,
     required this.onAccountTap,
@@ -31,13 +31,13 @@ class HomeScreen extends StatelessWidget {
   final String locationLabel;
   final String locationTitle;
   final String accountLabel;
+  final int alertCount;
   final int activeCount;
   final int pendingCount;
   final int criticalCount;
   final VoidCallback onQuickScan;
   final VoidCallback onRequestsTap;
   final VoidCallback onDemandReadingsTap;
-  final VoidCallback onRebalancingTap;
   final VoidCallback onStockNearestTap;
   final VoidCallback onAlertsTap;
   final VoidCallback onAccountTap;
@@ -47,6 +47,8 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final showAlertsButton = alertCount > 0;
+    final alertBadgeLabel = alertCount > 9 ? '9+' : alertCount.toString();
     return Column(
       children: [
         Expanded(
@@ -85,11 +87,12 @@ class HomeScreen extends StatelessWidget {
                     ),
                     Row(
                       children: [
-                        SmallSquareButton(
-                          icon: Icons.notifications_active_outlined,
-                          onTap: onAlertsTap,
-                        ),
-                        const SizedBox(width: 10),
+                        if (showAlertsButton)
+                          _AlertsIconButton(
+                            countLabel: alertBadgeLabel,
+                            onTap: onAlertsTap,
+                          ),
+                        if (showAlertsButton) const SizedBox(width: 10),
                         CircleBadge(
                           label: accountLabel,
                           onTap: onAccountTap,
@@ -147,13 +150,6 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 ActionBanner(
-                  title: 'Rebalancing Proposals',
-                  subtitle: 'Review and apply AI redistribution plans',
-                  leadingIcon: Icons.auto_graph_rounded,
-                  onTap: onRebalancingTap,
-                ),
-                const SizedBox(height: 10),
-                ActionBanner(
                   title: 'Nearest Stock',
                   subtitle: 'Find closest warehouses with surplus stock',
                   leadingIcon: Icons.route_rounded,
@@ -191,6 +187,55 @@ class HomeScreen extends StatelessWidget {
         TerminalBottomBar(
           currentIndex: navIndex,
           onTap: onNavigate,
+        ),
+      ],
+    );
+  }
+}
+
+class _AlertsIconButton extends StatelessWidget {
+  const _AlertsIconButton({
+    required this.countLabel,
+    required this.onTap,
+  });
+
+  final String countLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        SmallSquareButton(
+          icon: Icons.notifications_active_outlined,
+          onTap: onTap,
+        ),
+        Positioned(
+          right: -6,
+          top: -6,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 18),
+            height: 18,
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            decoration: BoxDecoration(
+              color: AppColors.redAlert,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: AppColors.canvas,
+                width: 1.2,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                countLabel,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: AppColors.creamText,
+                      fontSize: 10,
+                    ),
+              ),
+            ),
+          ),
         ),
       ],
     );

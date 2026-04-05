@@ -532,6 +532,7 @@ class RemoteAppRepository implements AppRepository {
       updatedLabel: _formatRelative(
         dto.updatedAt ?? dto.predictedShortfallAt,
       ),
+      pointId: dto.pointId,
       proposalId: dto.proposalId,
       confidence: dto.confidence,
       predictedShortfallAt: dto.predictedShortfallAt,

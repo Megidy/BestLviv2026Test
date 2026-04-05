@@ -17,10 +17,12 @@ class MapScreen extends StatefulWidget {
   const MapScreen({
     super.key,
     required this.points,
+    this.initialFocusPointId,
     required this.onBack,
   });
 
   final List<FacilityMapPoint> points;
+  final int? initialFocusPointId;
   final VoidCallback onBack;
 
   @override
@@ -31,6 +33,7 @@ class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
 
   FacilityMapPoint? _selectedPoint;
+  int? _lastAppliedFocusPointId;
   bool _isFullscreen = false;
   _MapStatusFilter _statusFilter = _MapStatusFilter.all;
   LatLng? _cameraCenter;
@@ -61,16 +64,22 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _syncSelectedPoint();
+    _applyInitialFocusPoint(force: true);
     _seedCameraIfNeeded();
   }
 
   @override
   void didUpdateWidget(covariant MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (identical(oldWidget.points, widget.points)) {
+    final pointsChanged = !identical(oldWidget.points, widget.points);
+    final focusChanged =
+        oldWidget.initialFocusPointId != widget.initialFocusPointId;
+    if (!pointsChanged && !focusChanged) {
       return;
     }
+
     _syncSelectedPoint();
+    _applyInitialFocusPoint(force: focusChanged);
     _seedCameraIfNeeded();
   }
 
@@ -352,6 +361,54 @@ class _MapScreenState extends State<MapScreen> {
     _selectedPoint = points.first;
   }
 
+  void _applyInitialFocusPoint({
+    bool force = false,
+  }) {
+    final focusPointId = widget.initialFocusPointId;
+    if (focusPointId == null || focusPointId <= 0) {
+      if (force) {
+        _lastAppliedFocusPointId = null;
+      }
+      return;
+    }
+
+    if (!force && _lastAppliedFocusPointId == focusPointId) {
+      return;
+    }
+
+    FacilityMapPoint? target;
+    for (final point in _displayablePoints) {
+      if (point.id == focusPointId) {
+        target = point;
+        break;
+      }
+    }
+    target ??= _findPointById(widget.points, focusPointId);
+
+    if (target == null) {
+      _lastAppliedFocusPointId = focusPointId;
+      return;
+    }
+
+    _selectedPoint = target;
+    final focusedCenter = LatLng(target.latitude, target.longitude);
+    _cameraCenter = focusedCenter;
+    _cameraZoom = (_cameraZoom ?? 0) < 13.4 ? 13.4 : _cameraZoom;
+    _lastAppliedFocusPointId = focusPointId;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final zoom = _cameraZoom ?? 13.4;
+      try {
+        _mapController.move(focusedCenter, zoom);
+      } catch (_) {
+        // Map controller may be unattached during first frame; initialCenter still applies.
+      }
+    });
+  }
+
   void _seedCameraIfNeeded() {
     if (_cameraCenter != null && _cameraZoom != null) {
       return;
@@ -363,6 +420,18 @@ class _MapScreenState extends State<MapScreen> {
     final point = points.first;
     _cameraCenter = LatLng(point.latitude, point.longitude);
     _cameraZoom ??= 12.4;
+  }
+
+  FacilityMapPoint? _findPointById(
+    List<FacilityMapPoint> points,
+    int pointId,
+  ) {
+    for (final point in points) {
+      if (point.id == pointId) {
+        return point;
+      }
+    }
+    return null;
   }
 
   void _toggleFullscreen() {

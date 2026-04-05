@@ -74,6 +74,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   int _requestQuantity = 100;
   int _navIndex = 0;
   AppScreen _detailBackScreen = AppScreen.home;
+  int? _mapFocusPointId;
 
   bool _isRestoringSession = true;
   bool _isAuthenticating = false;
@@ -103,7 +104,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   int _deliveryRequestsTotal = 0;
   int _allocationsTotal = 0;
   String? _requestsStatusFilter;
-  String? _requestsPriorityFilter;
   String? _allocationsStatusFilter;
   int _requestsPage = 1;
   int _allocationsPage = 1;
@@ -463,6 +463,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _currentScreen = AppScreen.login;
     _navIndex = 0;
     _detailBackScreen = AppScreen.home;
+    _mapFocusPointId = null;
     _isRestoringSession = false;
     _isAuthenticating = false;
     _isRefreshingData = false;
@@ -490,7 +491,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _deliveryRequestsTotal = 0;
     _allocationsTotal = 0;
     _requestsStatusFilter = null;
-    _requestsPriorityFilter = null;
     _allocationsStatusFilter = null;
     _requestsPage = 1;
     _allocationsPage = 1;
@@ -752,21 +752,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     }
   }
 
-  void _openRebalancingProposals() {
-    if (!_canUseRebalancing) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Rebalancing proposals are available only for dispatcher accounts.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    _goTo(AppScreen.rebalancingProposals);
-  }
-
   Future<void> _openProposalFromAlert(PredictiveAlert alert) async {
     if (!_canUseRebalancing) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -790,6 +775,44 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     _proposalIdController.text = proposalId.toString();
     _goTo(AppScreen.rebalancingProposals);
     await _loadRebalancingProposal();
+  }
+
+  int? _resolveMapFocusPointId(PredictiveAlert alert) {
+    final directId = alert.pointId;
+    if (directId != null && directId > 0) {
+      return directId;
+    }
+
+    final locationLabel = alert.locationLabel.trim().toLowerCase();
+    if (locationLabel.isEmpty) {
+      return null;
+    }
+
+    for (final point in _mapPoints) {
+      if (point.name.trim().toLowerCase() == locationLabel) {
+        return point.id;
+      }
+    }
+    for (final point in _mapPoints) {
+      final normalizedName = point.name.trim().toLowerCase();
+      if (normalizedName.contains(locationLabel) ||
+          locationLabel.contains(normalizedName)) {
+        return point.id;
+      }
+    }
+    return null;
+  }
+
+  void _openMapScreen({
+    int? focusPointId,
+  }) {
+    _mapFocusPointId = focusPointId;
+    _goTo(AppScreen.map);
+  }
+
+  void _openMapFromAlert(PredictiveAlert alert) {
+    final focusPointId = _resolveMapFocusPointId(alert);
+    _openMapScreen(focusPointId: focusPointId);
   }
 
   void _openStockNearest() {
@@ -976,11 +999,9 @@ class _TerminalExperienceState extends State<TerminalExperience> {
 
   Future<void> _setRequestFilters({
     String? status,
-    String? priority,
   }) async {
     setState(() {
       _requestsStatusFilter = status;
-      _requestsPriorityFilter = priority;
       _requestsPage = 1;
     });
     await _loadDeliveryRequests();
@@ -990,26 +1011,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     setState(() {
       _allocationsStatusFilter = status;
       _allocationsPage = 1;
-    });
-    await _loadDeliveryRequests();
-  }
-
-  Future<void> _setRequestsPage(int page) async {
-    if (page < 1 || page == _requestsPage) {
-      return;
-    }
-    setState(() {
-      _requestsPage = page;
-    });
-    await _loadDeliveryRequests();
-  }
-
-  Future<void> _setAllocationsPage(int page) async {
-    if (page < 1 || page == _allocationsPage) {
-      return;
-    }
-    setState(() {
-      _allocationsPage = page;
     });
     await _loadDeliveryRequests();
   }
@@ -1028,7 +1029,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
       final results = await Future.wait<dynamic>([
         _repository.getDeliveryRequests(
           status: _requestsStatusFilter,
-          priority: _requestsPriorityFilter,
           page: _requestsPage,
           pageSize: _requestsPageSize,
         ),
@@ -1357,11 +1357,15 @@ class _TerminalExperienceState extends State<TerminalExperience> {
   }
 
   void _handleNavigation(int index) {
+    if (index == 3) {
+      _openMapScreen();
+      return;
+    }
+
     final screen = switch (index) {
       0 => AppScreen.home,
       1 => AppScreen.inventory,
       2 => AppScreen.scanner,
-      3 => AppScreen.map,
       4 => AppScreen.settings,
       _ => AppScreen.home,
     };
@@ -1443,7 +1447,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   isBusy: _isRunningAlertAction || _isRefreshingData,
                   onDismissAlert: (alert) => _dismissAlert(alert),
                   onOpenProposal: (alert) => _openProposalFromAlert(alert),
-                  onOpenMap: (_) => _goTo(AppScreen.map),
+                  onOpenMap: (alert) => _openMapFromAlert(alert),
                   onRefresh: () => _refreshCoreData(),
                   onBack: () => _goTo(AppScreen.home),
                 ),
@@ -1453,13 +1457,13 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   locationLabel: _userProfile!.locationLabel,
                   locationTitle: locationTitle,
                   accountLabel: _userProfile!.initials,
+                  alertCount: _predictiveAlerts.length,
                   activeCount: inventoryOverview.items.length,
                   pendingCount: _predictiveAlerts.length,
                   criticalCount: criticalCount,
                   onQuickScan: () => _goTo(AppScreen.scanner),
                   onRequestsTap: () => _openDeliveryRequests(),
                   onDemandReadingsTap: () => _openDemandReadings(),
-                  onRebalancingTap: () => _openRebalancingProposals(),
                   onStockNearestTap: () => _openStockNearest(),
                   onAlertsTap: () => _goTo(AppScreen.alerts),
                   onAccountTap: () => _goTo(AppScreen.settings),
@@ -1511,33 +1515,21 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   },
                 ),
               AppScreen.requests => DeliveryRequestsScreen(
+                  actorRole: _userProfile!.role,
                   requests: _deliveryRequests,
                   allocations: _allocations,
                   totalRequests: _deliveryRequestsTotal,
                   totalAllocations: _allocationsTotal,
                   selectedRequestStatus: _requestsStatusFilter,
-                  selectedRequestPriority: _requestsPriorityFilter,
                   selectedAllocationStatus: _allocationsStatusFilter,
-                  requestsPage: _requestsPage,
-                  allocationsPage: _allocationsPage,
-                  requestsPageSize: _requestsPageSize,
-                  allocationsPageSize: _allocationsPageSize,
                   isBusy: _isLoadingRequests || _isMutatingRequest,
                   errorMessage: _deliveryError,
                   onBack: () => _goTo(AppScreen.home),
                   onRefresh: () => _loadDeliveryRequests(),
-                  onRequestStatusFilterChange: (value) => _setRequestFilters(
-                    status: value,
-                    priority: _requestsPriorityFilter,
-                  ),
-                  onRequestPriorityFilterChange: (value) => _setRequestFilters(
-                    status: _requestsStatusFilter,
-                    priority: value,
-                  ),
+                  onRequestStatusFilterChange: (value) =>
+                      _setRequestFilters(status: value),
                   onAllocationStatusFilterChange: (value) =>
                       _setAllocationStatusFilter(value),
-                  onRequestsPageChange: (page) => _setRequestsPage(page),
-                  onAllocationsPageChange: (page) => _setAllocationsPage(page),
                   onRunAllocate: () => _runAllocatePending(),
                   onOpenRequest: (request) => _openDeliveryRequestDetail(request),
                 ),
@@ -1625,6 +1617,7 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                 ),
               AppScreen.map => MapScreen(
                   points: _mapPoints,
+                  initialFocusPointId: _mapFocusPointId,
                   onBack: () => _goTo(AppScreen.home),
                 ),
               AppScreen.settings => SettingsScreen(
