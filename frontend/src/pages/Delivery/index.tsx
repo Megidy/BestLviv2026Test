@@ -188,7 +188,14 @@ export function DeliveryPage() {
   const canCreate = Boolean(user);
 
   const selectClass =
-    'w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/60';
+    'w-full appearance-none rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 hover:border-border/80';
+
+  const PRIORITY_META: Record<DeliveryPriority, { label: string; color: string }> = {
+    normal:   { label: 'Normal',   color: '#42698F' },
+    elevated: { label: 'Elevated', color: '#A97A20' },
+    critical: { label: 'Critical', color: '#A04535' },
+    urgent:   { label: 'Urgent',   color: '#ef4444' },
+  };
 
   return (
     <div className="space-y-5 animate-slide-up">
@@ -312,78 +319,112 @@ export function DeliveryPage() {
 
       {/* New Request Modal */}
       {showModal ? (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-md rounded-2xl border border-border bg-surface shadow-card animate-slide-up">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <h2 className="text-base font-semibold text-text">New delivery request</h2>
+        <div className="fixed inset-0 z-[3000] flex items-end justify-center p-0 sm:items-center sm:p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative w-full max-w-lg rounded-t-3xl border border-border bg-surface shadow-card animate-slide-up sm:rounded-2xl">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5">
+              <div>
+                <h2 className="text-base font-semibold text-text">New delivery request</h2>
+                <p className="mt-0.5 text-xs text-text-muted">Fill in the details below to create a new request</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-accent hover:text-text"
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-border text-text-muted transition-colors hover:bg-accent hover:text-text"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
 
-            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 px-5 py-4">
+            <div className="h-px bg-border" />
+
+            <form onSubmit={(e) => void handleSubmit(e)} className="px-6 py-5 space-y-4">
+              {/* Destination */}
               <div>
-                <label className="mb-1.5 block text-xs text-text-muted">Destination</label>
-                <select
-                  className={selectClass}
-                  value={formDestination}
-                  onChange={(e) => setFormDestination(e.target.value)}
-                  required
-                >
-                  <option value="">Select destination…</option>
-                  {customerPoints.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} (#{p.id})</option>
-                  ))}
-                </select>
+                <label className="mb-1.5 block text-xs font-medium text-text-muted uppercase tracking-wide">Destination</label>
+                <div className="relative">
+                  <select
+                    className={selectClass}
+                    value={formDestination}
+                    onChange={(e) => setFormDestination(e.target.value)}
+                    required
+                  >
+                    <option value="">Select delivery point…</option>
+                    {customerPoints.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+                  </span>
+                </div>
               </div>
 
+              {/* Resource */}
               <div>
-                <label className="mb-1.5 block text-xs text-text-muted">Resource</label>
-                <select
-                  className={selectClass}
-                  value={formResource}
-                  onChange={(e) => setFormResource(e.target.value)}
-                  required
-                >
-                  <option value="">Select resource…</option>
-                  {resourceItems.map((r) => (
-                    <option key={r.resourceId} value={r.resourceId}>{r.name}</option>
-                  ))}
-                </select>
+                <label className="mb-1.5 block text-xs font-medium text-text-muted uppercase tracking-wide">Resource</label>
+                <div className="relative">
+                  <select
+                    className={selectClass}
+                    value={formResource}
+                    onChange={(e) => setFormResource(e.target.value)}
+                    required
+                  >
+                    <option value="">Select resource…</option>
+                    {resourceItems.map((r) => (
+                      <option key={r.resourceId} value={r.resourceId}>{r.name} · {r.category}</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+                  </span>
+                </div>
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs text-text-muted">Quantity</label>
-                <Input
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 50"
-                  value={formQty}
-                  onChange={(e) => setFormQty(e.target.value)}
-                  required
-                />
+              {/* Quantity + Priority side by side */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-text-muted uppercase tracking-wide">Quantity</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 50"
+                    value={formQty}
+                    onChange={(e) => setFormQty(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-text-muted uppercase tracking-wide">Priority</label>
+                  <div className="relative">
+                    <select
+                      className={`${selectClass} pl-7`}
+                      value={formPriority}
+                      onChange={(e) => setFormPriority(e.target.value as DeliveryPriority)}
+                    >
+                      {PRIORITIES.map((p) => (
+                        <option key={p} value={p}>{PRIORITY_META[p].label}</option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+                    </span>
+                    {/* Priority color dot */}
+                    <span
+                      className="pointer-events-none absolute left-3 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full"
+                      style={{ backgroundColor: PRIORITY_META[formPriority].color }}
+                    />
+                  </div>
+                </div>
               </div>
 
+              {/* Arrive by */}
               <div>
-                <label className="mb-1.5 block text-xs text-text-muted">Priority</label>
-                <select
-                  className={selectClass}
-                  value={formPriority}
-                  onChange={(e) => setFormPriority(e.target.value as DeliveryPriority)}
-                >
-                  {PRIORITIES.map((p) => (
-                    <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs text-text-muted">Arrive by (optional)</label>
+                <label className="mb-1.5 block text-xs font-medium text-text-muted uppercase tracking-wide">
+                  Arrive by <span className="normal-case font-normal">(optional)</span>
+                </label>
                 <input
                   type="datetime-local"
                   className={selectClass}
@@ -393,7 +434,9 @@ export function DeliveryPage() {
               </div>
 
               {formError ? (
-                <p className="text-sm text-danger">{formError}</p>
+                <div className="rounded-xl border border-danger/20 bg-danger/10 px-3 py-2.5 text-sm text-danger">
+                  {formError}
+                </div>
               ) : null}
 
               <div className="flex gap-2 pt-1">

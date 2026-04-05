@@ -26,6 +26,7 @@ const DEFAULT_ZOOM = 10;
 const PANEL_BREAKPOINT_PX = 1024;
 
 type Filter = 'all' | MapPointStatus;
+type TypeFilter = 'all' | 'customer' | 'warehouse';
 type MapViewportMode = 'default' | 'selected' | 'nearest-results';
 type StockMarkerTone = 'good' | 'borderline' | 'critical';
 
@@ -111,17 +112,19 @@ function dedupePoints(points: (MapPoint | null | undefined)[]) {
 function getVisibleMarkers(
   points: MapPoint[],
   statusFilter: Filter,
+  typeFilter: TypeFilter,
   selectedOriginPoint: MapPoint | null,
   highlightedCandidatePoints: MapPoint[],
   selectedMarkerPoint: MapPoint | null,
 ) {
-  const filteredPoints =
-    statusFilter === 'all'
-      ? points.filter(hasValidCoordinates)
-      : points.filter((point) => point.status === statusFilter && hasValidCoordinates(point));
+  const filteredPoints = points
+    .filter(hasValidCoordinates)
+    .filter((point) => statusFilter === 'all' || point.status === statusFilter)
+    .filter((point) => typeFilter === 'all' || point.type === typeFilter);
 
   return dedupePoints([
     ...filteredPoints,
+    // always include selected/highlighted even if filtered out
     selectedOriginPoint,
     selectedMarkerPoint,
     ...highlightedCandidatePoints,
@@ -302,29 +305,57 @@ function MapViewportController({
 function FilterBar({
   active,
   onChange,
+  typeActive,
+  onTypeChange,
 }: {
   active: Filter;
   onChange: (filter: Filter) => void;
+  typeActive: TypeFilter;
+  onTypeChange: (t: TypeFilter) => void;
 }) {
   const filters: Filter[] = ['all', 'critical', 'elevated', 'predictive', 'normal'];
+  const typeFilters: { value: TypeFilter; label: string }[] = [
+    { value: 'customer', label: 'Customers' },
+    { value: 'warehouse', label: 'Warehouses' },
+    { value: 'all', label: 'All' },
+  ];
 
   return (
-    <div className="flex max-w-[calc(100%-2rem)] overflow-x-auto rounded-xl border border-border bg-background/90 p-1.5 shadow backdrop-blur sm:max-w-[24rem]">
-      {filters.map((filter) => (
-        <button
-          key={filter}
-          onClick={() => onChange(filter)}
-          aria-pressed={active === filter}
-          className={cn(
-            'shrink-0 rounded-lg px-3 py-1 text-xs font-medium capitalize transition-colors',
-            active === filter
-              ? 'bg-primary text-background'
-              : 'text-text-muted hover:bg-white/5 hover:text-text',
-          )}
-        >
-          {filter}
-        </button>
-      ))}
+    <div className="flex flex-col gap-1.5">
+      <div className="flex max-w-[calc(100%-2rem)] overflow-x-auto rounded-xl border border-border bg-background/90 p-1.5 shadow backdrop-blur sm:max-w-[28rem]">
+        {filters.map((filter) => (
+          <button
+            key={filter}
+            onClick={() => onChange(filter)}
+            aria-pressed={active === filter}
+            className={cn(
+              'shrink-0 rounded-lg px-3 py-1 text-xs font-medium capitalize transition-colors',
+              active === filter
+                ? 'bg-primary text-background'
+                : 'text-text-muted hover:bg-white/5 hover:text-text',
+            )}
+          >
+            {filter}
+          </button>
+        ))}
+      </div>
+      <div className="flex overflow-x-auto rounded-xl border border-border bg-background/90 p-1.5 shadow backdrop-blur">
+        {typeFilters.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => onTypeChange(value)}
+            aria-pressed={typeActive === value}
+            className={cn(
+              'shrink-0 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+              typeActive === value
+                ? 'bg-primary text-background'
+                : 'text-text-muted hover:bg-white/5 hover:text-text',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -494,6 +525,7 @@ export function MapView() {
   const { user } = useAuth();
 
   const [statusFilter, setStatusFilter] = useState<Filter>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('customer');
   const [selectedOriginPointId, setSelectedOriginPointId] = useState<number | null>(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null);
   const [selectedResourceId, setSelectedResourceId] = useState<number | undefined>();
@@ -641,6 +673,7 @@ export function MapView() {
       getVisibleMarkers(
         points,
         statusFilter,
+        typeFilter,
         selectedOriginPoint,
         highlightedCandidatePoints,
         selectedMarkerPoint,
@@ -651,6 +684,7 @@ export function MapView() {
       selectedMarkerPoint,
       selectedOriginPoint,
       statusFilter,
+      typeFilter,
     ],
   );
 
@@ -669,7 +703,7 @@ export function MapView() {
   );
 
   const helperMessage =
-    'Спочатку виберіть точку доставки / клієнта на мапі';
+    'At first choose point of delievery, or customer on map';
 
   const resetMapSelection = () => {
     setSelectedOriginPointId(null);
@@ -745,7 +779,7 @@ export function MapView() {
               </button>
             </div>
 
-            <div className="mb-3 flex flex-wrap gap-1.5">
+            <div className="mb-2 flex flex-wrap gap-1.5">
               {(['all', 'critical', 'elevated', 'predictive', 'normal'] as Filter[]).map(
                 (filterOption) => (
                   <button
@@ -760,6 +794,25 @@ export function MapView() {
                     )}
                   >
                     {filterOption}
+                  </button>
+                ),
+              )}
+            </div>
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {([['customer', 'Customers'], ['warehouse', 'Warehouses'], ['all', 'All']] as [TypeFilter, string][]).map(
+                ([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setTypeFilter(val)}
+                    aria-pressed={typeFilter === val}
+                    className={cn(
+                      'rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                      typeFilter === val
+                        ? 'bg-primary text-background'
+                        : 'text-text-muted hover:bg-white/5 hover:text-text',
+                    )}
+                  >
+                    {label}
                   </button>
                 ),
               )}
@@ -832,7 +885,12 @@ export function MapView() {
       </div>
 
       <div className="absolute left-4 top-4 z-[1000] hidden flex-col gap-2 sm:flex">
-        <FilterBar active={statusFilter} onChange={setStatusFilter} />
+        <FilterBar
+          active={statusFilter}
+          onChange={setStatusFilter}
+          typeActive={typeFilter}
+          onTypeChange={setTypeFilter}
+        />
 
         <div className="flex max-w-[28rem] flex-wrap gap-2 rounded-xl border border-border bg-background/90 p-3 shadow backdrop-blur">
           <select
