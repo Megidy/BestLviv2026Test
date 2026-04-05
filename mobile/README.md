@@ -1,17 +1,35 @@
-# logisync_mobile
+# LogiSync Mobile
 
-A new Flutter project.
+Flutter mobile client for worker/dispatcher delivery and predictive flows.
 
-## Getting Started
+## Run
 
-This project is a starting point for a Flutter application.
+Use a secure API base URL explicitly:
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter run --dart-define=LOGISYNC_API_BASE_URL=https://your-api-host
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+For local HTTP backend (optional override):
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter run \
+  --dart-define=LOGISYNC_API_BASE_URL=http://localhost:8080 \
+  --dart-define=LOGISYNC_ALLOW_INSECURE_HTTP=true
+```
+
+Note: in debug/profile builds HTTP is allowed by default. In release builds HTTPS is enforced unless `LOGISYNC_ALLOW_INSECURE_HTTP=true` is set.
+
+## Quality Commands
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+```
+
+Integration tests:
+
+```bash
+flutter test test/integration
+```

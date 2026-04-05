@@ -6,18 +6,21 @@ import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
+enum _MapStatusFilter {
+  all,
+  normal,
+  elevated,
+  critical,
+}
+
 class MapScreen extends StatefulWidget {
   const MapScreen({
     super.key,
     required this.points,
-    required this.swaggerJsonUrl,
-    required this.mapPointsEndpointUrl,
     required this.onBack,
   });
 
   final List<FacilityMapPoint> points;
-  final String swaggerJsonUrl;
-  final String mapPointsEndpointUrl;
   final VoidCallback onBack;
 
   @override
@@ -25,15 +28,40 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  final MapController _mapController = MapController();
+
   FacilityMapPoint? _selectedPoint;
   bool _isFullscreen = false;
+  _MapStatusFilter _statusFilter = _MapStatusFilter.all;
+  LatLng? _cameraCenter;
+  double? _cameraZoom;
+
+  List<FacilityMapPoint> get _displayablePoints {
+    return widget.points
+        .where((point) => point.status != MapPointStatus.predictive)
+        .toList();
+  }
+
+  List<FacilityMapPoint> get _visiblePoints {
+    return switch (_statusFilter) {
+      _MapStatusFilter.all => _displayablePoints,
+      _MapStatusFilter.normal => _displayablePoints
+          .where((point) => point.status == MapPointStatus.normal)
+          .toList(),
+      _MapStatusFilter.elevated => _displayablePoints
+          .where((point) => point.status == MapPointStatus.elevated)
+          .toList(),
+      _MapStatusFilter.critical => _displayablePoints
+          .where((point) => point.status == MapPointStatus.critical)
+          .toList(),
+    };
+  }
 
   @override
   void initState() {
     super.initState();
-    if (widget.points.isNotEmpty) {
-      _selectedPoint = widget.points.first;
-    }
+    _syncSelectedPoint();
+    _seedCameraIfNeeded();
   }
 
   @override
@@ -42,30 +70,22 @@ class _MapScreenState extends State<MapScreen> {
     if (identical(oldWidget.points, widget.points)) {
       return;
     }
+    _syncSelectedPoint();
+    _seedCameraIfNeeded();
+  }
 
-    if (widget.points.isEmpty) {
-      _selectedPoint = null;
-      return;
-    }
-
-    final selectedId = _selectedPoint?.id;
-    FacilityMapPoint? matchedPoint;
-    if (selectedId != null) {
-      for (final point in widget.points) {
-        if (point.id == selectedId) {
-          matchedPoint = point;
-          break;
-        }
-      }
-    }
-    _selectedPoint = matchedPoint ?? widget.points.first;
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final initialPoint = widget.points.isNotEmpty
-        ? widget.points.first
+    final visiblePoints = _visiblePoints;
+    final initialPoint = visiblePoints.isNotEmpty
+        ? visiblePoints.first
         : const FacilityMapPoint(
             id: 0,
             name: 'No map points',
@@ -106,7 +126,10 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            const _LegendBar(),
+            _MapFilterBar(
+              selectedFilter: _statusFilter,
+              onFilterSelected: _setStatusFilter,
+            ),
             const SizedBox(height: 12),
           ],
           Expanded(
@@ -115,16 +138,22 @@ class _MapScreenState extends State<MapScreen> {
               child: Stack(
                 children: [
                   FlutterMap(
+                    mapController: _mapController,
                     options: MapOptions(
-                      initialCenter: LatLng(
-                        initialPoint.latitude,
-                        initialPoint.longitude,
-                      ),
-                      initialZoom: 12.4,
+                      initialCenter: _cameraCenter ??
+                          LatLng(
+                            initialPoint.latitude,
+                            initialPoint.longitude,
+                          ),
+                      initialZoom: _cameraZoom ?? 12.4,
                       onTap: (_, _) {
                         setState(() {
                           _selectedPoint = null;
                         });
+                      },
+                      onPositionChanged: (camera, _) {
+                        _cameraCenter = camera.center;
+                        _cameraZoom = camera.zoom;
                       },
                     ),
                     children: [
@@ -134,7 +163,7 @@ class _MapScreenState extends State<MapScreen> {
                         userAgentPackageName: 'logisync_mobile',
                       ),
                       MarkerLayer(
-                        markers: widget.points.map((point) {
+                        markers: visiblePoints.map((point) {
                           final color = _colorFor(point.status);
                           final selected = _selectedPoint?.id == point.id;
                           return Marker(
@@ -159,6 +188,21 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ],
                   ),
+                  if (visiblePoints.isEmpty)
+                    Center(
+                      child: PanelCard(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        child: Text(
+                          'No points for selected filter.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.creamText,
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 12,
                     left: 12,
@@ -175,11 +219,7 @@ class _MapScreenState extends State<MapScreen> {
                           icon: _isFullscreen
                               ? Icons.close_fullscreen_rounded
                               : Icons.open_in_full_rounded,
-                          onTap: () {
-                            setState(() {
-                              _isFullscreen = !_isFullscreen;
-                            });
-                          },
+                          onTap: _toggleFullscreen,
                         ),
                       ],
                     ),
@@ -202,7 +242,10 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${widget.points.length} points',
+                            _buildPointsCountLabel(
+                              visibleCount: visiblePoints.length,
+                              totalCount: _displayablePoints.length,
+                            ),
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: AppColors.creamText,
                             ),
@@ -212,11 +255,15 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ),
                   if (_isFullscreen)
-                    const Positioned(
+                    Positioned(
                       top: 62,
                       left: 12,
                       right: 12,
-                      child: _LegendBar(compact: true),
+                      child: _MapFilterBar(
+                        selectedFilter: _statusFilter,
+                        compact: true,
+                        onFilterSelected: _setStatusFilter,
+                      ),
                     ),
                   Positioned(
                     left: 12,
@@ -250,7 +297,6 @@ class _MapScreenState extends State<MapScreen> {
                       bottom: 44,
                       child: _SelectedPointCard(
                         point: _selectedPoint,
-                        endpointUrl: widget.mapPointsEndpointUrl,
                         compact: true,
                       ),
                     ),
@@ -262,7 +308,6 @@ class _MapScreenState extends State<MapScreen> {
             const SizedBox(height: 12),
             _SelectedPointCard(
               point: _selectedPoint,
-              endpointUrl: widget.mapPointsEndpointUrl,
             ),
           ],
         ],
@@ -278,53 +323,132 @@ class _MapScreenState extends State<MapScreen> {
       MapPointStatus.predictive => AppColors.warmGold,
     };
   }
+
+  void _setStatusFilter(_MapStatusFilter filter) {
+    setState(() {
+      _statusFilter = filter;
+      _syncSelectedPoint();
+    });
+    _seedCameraIfNeeded();
+  }
+
+  void _syncSelectedPoint() {
+    final points = _visiblePoints;
+    if (points.isEmpty) {
+      _selectedPoint = null;
+      return;
+    }
+
+    final selectedId = _selectedPoint?.id;
+    if (selectedId != null) {
+      for (final point in points) {
+        if (point.id == selectedId) {
+          _selectedPoint = point;
+          return;
+        }
+      }
+    }
+
+    _selectedPoint = points.first;
+  }
+
+  void _seedCameraIfNeeded() {
+    if (_cameraCenter != null && _cameraZoom != null) {
+      return;
+    }
+    final points = _visiblePoints;
+    if (points.isEmpty) {
+      return;
+    }
+    final point = points.first;
+    _cameraCenter = LatLng(point.latitude, point.longitude);
+    _cameraZoom ??= 12.4;
+  }
+
+  void _toggleFullscreen() {
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+    });
+  }
+
+  String _buildPointsCountLabel({
+    required int visibleCount,
+    required int totalCount,
+  }) {
+    if (visibleCount == totalCount) {
+      return '$totalCount points';
+    }
+    return '$visibleCount/$totalCount points';
+  }
 }
 
-class _LegendChip extends StatelessWidget {
-  const _LegendChip({
+class _StatusFilterChip extends StatelessWidget {
+  const _StatusFilterChip({
     required this.color,
     required this.label,
+    required this.selected,
+    required this.onTap,
   });
 
   final Color color;
   final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.mutedGold.withValues(alpha: 0.42),
+    return Material(
+      color: selected
+          ? AppColors.mutedGold.withValues(alpha: 0.58)
+          : AppColors.mutedGold.withValues(alpha: 0.42),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
         borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? color : AppColors.stroke,
             ),
           ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.creamText,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.creamText,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _LegendBar extends StatelessWidget {
-  const _LegendBar({this.compact = false});
+class _MapFilterBar extends StatelessWidget {
+  const _MapFilterBar({
+    required this.selectedFilter,
+    required this.onFilterSelected,
+    this.compact = false,
+  });
 
+  final _MapStatusFilter selectedFilter;
+  final ValueChanged<_MapStatusFilter> onFilterSelected;
   final bool compact;
 
   @override
@@ -341,22 +465,30 @@ class _LegendBar extends StatelessWidget {
           runAlignment: WrapAlignment.center,
           runSpacing: compact ? 6 : 8,
           spacing: compact ? 6 : 8,
-          children: const [
-            _LegendChip(
+          children: [
+            _StatusFilterChip(
+              color: AppColors.warmGold,
+              label: 'All',
+              selected: selectedFilter == _MapStatusFilter.all,
+              onTap: () => onFilterSelected(_MapStatusFilter.all),
+            ),
+            _StatusFilterChip(
               color: AppColors.greenOk,
               label: 'Normal',
+              selected: selectedFilter == _MapStatusFilter.normal,
+              onTap: () => onFilterSelected(_MapStatusFilter.normal),
             ),
-            _LegendChip(
+            _StatusFilterChip(
               color: AppColors.amberWarn,
               label: 'Elevated',
+              selected: selectedFilter == _MapStatusFilter.elevated,
+              onTap: () => onFilterSelected(_MapStatusFilter.elevated),
             ),
-            _LegendChip(
+            _StatusFilterChip(
               color: AppColors.redAlert,
               label: 'Critical',
-            ),
-            _LegendChip(
-              color: AppColors.warmGold,
-              label: 'Predictive',
+              selected: selectedFilter == _MapStatusFilter.critical,
+              onTap: () => onFilterSelected(_MapStatusFilter.critical),
             ),
           ],
         ),
@@ -418,33 +550,59 @@ class _MapMarker extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          width: selected ? 32 : 28,
-          height: selected ? 32 : 28,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.creamText,
-              width: selected ? 2.5 : 1.5,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black38,
-                blurRadius: 12,
-                offset: Offset(0, 4),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: selected ? 32 : 28,
+              height: selected ? 32 : 28,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.creamText,
+                  width: selected ? 2.5 : 1.5,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black38,
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              alertCount.toString(),
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: AppColors.canvas,
+              child: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.creamText.withValues(alpha: 0.28),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
-          ),
+            if (alertCount > 0)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.canvas,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.stroke),
+                  ),
+                  child: Text(
+                    alertCount > 99 ? '99+' : alertCount.toString(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.creamText,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         if (selected) ...[
           const SizedBox(height: 4),
@@ -474,12 +632,10 @@ class _MapMarker extends StatelessWidget {
 class _SelectedPointCard extends StatelessWidget {
   const _SelectedPointCard({
     required this.point,
-    required this.endpointUrl,
     this.compact = false,
   });
 
   final FacilityMapPoint? point;
-  final String endpointUrl;
   final bool compact;
 
   @override
@@ -556,11 +712,6 @@ class _SelectedPointCard extends StatelessWidget {
             label: 'Coordinates',
             value:
                 '${point!.latitude.toStringAsFixed(4)}, ${point!.longitude.toStringAsFixed(4)}',
-          ),
-          const SizedBox(height: 10),
-          _MetaColumn(
-            label: 'Source',
-            value: endpointUrl,
           ),
         ],
       ),

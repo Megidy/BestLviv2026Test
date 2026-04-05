@@ -8,23 +8,17 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     super.key,
     required this.profile,
-    required this.swaggerJsonUrl,
-    required this.profileEndpointUrl,
     required this.onBack,
     required this.onLogout,
   });
 
   final UserProfile profile;
-  final String swaggerJsonUrl;
-  final String profileEndpointUrl;
   final VoidCallback onBack;
   final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final swaggerHost = Uri.tryParse(swaggerJsonUrl)?.host;
-    final profilePath = Uri.tryParse(profileEndpointUrl)?.path ?? profileEndpointUrl;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       child: Column(
@@ -141,13 +135,6 @@ class SettingsScreen extends StatelessWidget {
                   icon: Icons.notifications_active_outlined,
                   title: 'Alert Monitoring',
                   subtitle: 'Critical shortage notifications enabled',
-                ),
-                SizedBox(height: 10),
-                _SettingsAccessTile(
-                  icon: Icons.badge_outlined,
-                  title: 'API Source',
-                  subtitle:
-                      'Profile data mapped to $profilePath via ${swaggerHost ?? 'shared swagger config'}',
                 ),
               ],
             ),

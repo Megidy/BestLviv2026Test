@@ -9,7 +9,17 @@ class HomeScreen extends StatelessWidget {
     super.key,
     required this.queue,
     required this.navIndex,
+    required this.locationLabel,
+    required this.locationTitle,
+    required this.accountLabel,
+    required this.activeCount,
+    required this.pendingCount,
+    required this.criticalCount,
     required this.onQuickScan,
+    required this.onRequestsTap,
+    required this.onDemandReadingsTap,
+    required this.onRebalancingTap,
+    required this.onStockNearestTap,
     required this.onAlertsTap,
     required this.onAccountTap,
     required this.onQueueTap,
@@ -18,10 +28,20 @@ class HomeScreen extends StatelessWidget {
 
   final List<QueueItem> queue;
   final int navIndex;
+  final String locationLabel;
+  final String locationTitle;
+  final String accountLabel;
+  final int activeCount;
+  final int pendingCount;
+  final int criticalCount;
   final VoidCallback onQuickScan;
+  final VoidCallback onRequestsTap;
+  final VoidCallback onDemandReadingsTap;
+  final VoidCallback onRebalancingTap;
+  final VoidCallback onStockNearestTap;
   final VoidCallback onAlertsTap;
   final VoidCallback onAccountTap;
-  final VoidCallback onQueueTap;
+  final ValueChanged<QueueItem> onQueueTap;
   final ValueChanged<int> onNavigate;
 
   @override
@@ -43,14 +63,14 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'LOGISYNC / WH-04',
+                            'LOGISYNC / $locationLabel',
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: AppColors.softText,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Central Terminal',
+                            locationTitle,
                             style: theme.textTheme.headlineMedium?.copyWith(
                               fontSize: 28,
                             ),
@@ -71,7 +91,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         CircleBadge(
-                          label: 'JD',
+                          label: accountLabel,
                           onTap: onAccountTap,
                         ),
                       ],
@@ -80,15 +100,25 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 Row(
-                  children: const [
-                    Expanded(child: MetricCard(label: 'Active', value: '24')),
-                    SizedBox(width: 10),
-                    Expanded(child: MetricCard(label: 'Pending', value: '08')),
-                    SizedBox(width: 10),
+                  children: [
+                    Expanded(
+                      child: MetricCard(
+                        label: 'Active',
+                        value: activeCount.toString(),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: MetricCard(
+                        label: 'Pending',
+                        value: pendingCount.toString(),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: MetricCard(
                         label: 'Critical',
-                        value: '03',
+                        value: criticalCount.toString(),
                         accent: AppColors.redAlert,
                       ),
                     ),
@@ -100,6 +130,34 @@ class HomeScreen extends StatelessWidget {
                   subtitle: 'Ready for next resource',
                   leadingIcon: Icons.qr_code_scanner_rounded,
                   onTap: onQuickScan,
+                ),
+                const SizedBox(height: 10),
+                ActionBanner(
+                  title: 'Delivery Requests',
+                  subtitle: 'Open list and manage lifecycle actions',
+                  leadingIcon: Icons.local_shipping_outlined,
+                  onTap: onRequestsTap,
+                ),
+                const SizedBox(height: 10),
+                ActionBanner(
+                  title: 'Demand Readings',
+                  subtitle: 'Feed AI with manual demand signals',
+                  leadingIcon: Icons.insights_outlined,
+                  onTap: onDemandReadingsTap,
+                ),
+                const SizedBox(height: 10),
+                ActionBanner(
+                  title: 'Rebalancing Proposals',
+                  subtitle: 'Review and apply AI redistribution plans',
+                  leadingIcon: Icons.auto_graph_rounded,
+                  onTap: onRebalancingTap,
+                ),
+                const SizedBox(height: 10),
+                ActionBanner(
+                  title: 'Nearest Stock',
+                  subtitle: 'Find closest warehouses with surplus stock',
+                  leadingIcon: Icons.route_rounded,
+                  onTap: onStockNearestTap,
                 ),
                 const SizedBox(height: 18),
                 Row(
@@ -118,8 +176,12 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
+                if (queue.isEmpty)
+                  const PanelCard(
+                    child: Text('No priority items loaded from the API yet.'),
+                  ),
                 for (final item in queue) ...[
-                  QueueCard(item: item, onTap: onQueueTap),
+                  QueueCard(item: item, onTap: () => onQueueTap(item)),
                   const SizedBox(height: 10),
                 ],
               ],
