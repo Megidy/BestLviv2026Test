@@ -15,6 +15,25 @@ import {
   formatPercent,
   formatRelativeCountdown,
 } from '@/shared/lib/formatters';
+
+type EffectiveStatus = {
+  label: string;
+  tone: 'info' | 'neutral' | 'success' | 'warning' | 'danger';
+};
+
+function effectiveStatus(
+  alert: AlertWithReasoning,
+  proposal?: RebalancingProposal | null,
+): EffectiveStatus {
+  if (alert.status === 'dismissed') return { label: 'Dismissed', tone: 'neutral' };
+  if (alert.status === 'resolved') return { label: 'Resolved', tone: 'success' };
+  if (!alert.proposal_id) return { label: 'Open', tone: 'info' };
+  if (proposal === undefined) return { label: 'Open', tone: 'info' };
+  if (proposal === null) return { label: 'Open', tone: 'info' };
+  if (proposal.status === 'approved') return { label: 'Approved', tone: 'success' };
+  if (proposal.status === 'dismissed') return { label: 'Proposal rejected', tone: 'warning' };
+  return { label: 'Awaiting approval', tone: 'info' };
+}
 import {
   TableCell,
   TableRow,
@@ -27,6 +46,7 @@ type AlertRowProps = {
   pointNameById: Record<number, string>;
   resourceNameById: Record<number, string>;
   pendingActionKeys: Record<string, boolean>;
+  isOnline: boolean;
   onToggleExpand: (alert: AlertWithReasoning) => Promise<void>;
   onApproveProposal: (proposalId: number) => void;
   onDismissProposal: (proposalId: number) => void;
@@ -48,6 +68,7 @@ export function AlertRow({
   pointNameById,
   resourceNameById,
   pendingActionKeys,
+  isOnline,
   onToggleExpand,
   onApproveProposal,
   onDismissProposal,
@@ -98,10 +119,11 @@ export function AlertRow({
             <Badge tone="info">{formatPercent(alert.confidence)} confidence</Badge>
           </div>
         </TableCell>
-        <TableCell className="text-text-muted">
-          <Badge tone={alert.status === 'resolved' ? 'neutral' : 'info'}>
-            {alert.status}
-          </Badge>
+        <TableCell>
+          {(() => {
+            const s = effectiveStatus(alert, proposal);
+            return <Badge tone={s.tone}>{s.label}</Badge>;
+          })()}
         </TableCell>
         <TableCell>
           <div
@@ -113,7 +135,8 @@ export function AlertRow({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={isApprovePending}
+                  disabled={!isOnline || isApprovePending}
+                  title={!isOnline ? 'Not available offline' : undefined}
                   className="border-success/50 text-success hover:bg-success/10 hover:border-success"
                   onClick={() => onApproveProposal(alert.proposal_id!)}
                 >
@@ -126,7 +149,8 @@ export function AlertRow({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={isDismissProposalPending}
+                  disabled={!isOnline || isDismissProposalPending}
+                  title={!isOnline ? 'Not available offline' : undefined}
                   className="border-danger/50 text-danger hover:bg-danger/10 hover:border-danger"
                   onClick={() => onDismissProposal(alert.proposal_id!)}
                 >
@@ -137,7 +161,8 @@ export function AlertRow({
             <Button
               size="sm"
               variant="outline"
-              disabled={isDismissAlertPending || !canResolveAlert}
+              disabled={!isOnline || isDismissAlertPending || !canResolveAlert}
+              title={!isOnline ? 'Not available offline' : undefined}
               className="border-warning/50 text-warning hover:bg-warning/10 hover:border-warning"
               onClick={() => onDismissAlert(alert.id)}
             >

@@ -3,7 +3,9 @@ import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { AuthGuard } from '@/app/router/AuthGuard';
 import { AlertsPage } from '@/pages/Alerts';
 import { AdminPage } from '@/pages/Admin';
+import { AllocationsPage } from '@/pages/Allocations';
 import { DashboardPage } from '@/pages/Dashboard';
+import { DeliveryPage } from '@/pages/Delivery';
 import { InventoryPage } from '@/pages/Inventory';
 import { LoginPage } from '@/pages/Login';
 import { MapPage } from '@/pages/Map';
@@ -51,6 +53,14 @@ export const router = createBrowserRouter([
           {
             path: 'alerts',
             element: <AlertsPage />,
+          },
+          {
+            path: 'delivery',
+            element: <DeliveryPage />,
+          },
+          {
+            path: 'allocations',
+            element: <AllocationsPage />,
           },
           {
             path: 'admin',

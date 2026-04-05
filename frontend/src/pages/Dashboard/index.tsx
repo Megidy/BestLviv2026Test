@@ -4,6 +4,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
 import { useMap } from '@/features/map/hooks/useMap';
+import { useNetwork } from '@/shared/hooks/useNetwork';
 import { formatDateTime } from '@/shared/lib/formatters';
 import { Card, CardContent } from '@/shared/ui/Card';
 import { cn } from '@/shared/lib/cn';
@@ -30,6 +31,7 @@ export function DashboardPage() {
   });
   const isLoading = isMapLoading || isAlertsLoading || isInventoryLoading;
   const error = mapError ?? alertsError ?? inventoryError;
+  const { isOnline } = useNetwork();
 
   const kpis = [
     {
@@ -114,13 +116,20 @@ export function DashboardPage() {
 
       <Card className="flex min-h-[52px] items-center justify-between px-5">
         <p className="text-sm text-text-muted">
-          {isLoading
-            ? 'Synchronizing live data…'
-            : `Synchronized: ${formatDateTime(new Date().toISOString())}`}
+          {!isOnline
+            ? 'Viewing cached data'
+            : isLoading
+              ? 'Synchronizing live data…'
+              : `Synchronized: ${formatDateTime(new Date().toISOString())}`}
         </p>
         <span className="flex items-center gap-2 text-sm font-medium text-text-muted">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
-          {isLoading ? 'Loading' : 'Live'}
+          <span
+            className={cn(
+              'h-1.5 w-1.5 rounded-full',
+              !isOnline ? 'bg-warning' : 'animate-pulse bg-success',
+            )}
+          />
+          {!isOnline ? 'Offline' : isLoading ? 'Loading' : 'Live'}
         </span>
       </Card>
     </div>

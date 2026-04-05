@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.8](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.7...v0.1.8) (2026-04-05)
+
+
+### Bug Fixes
+
+* migrations ([b76fc75](https://github.com/Megidy/BestLviv2026Test/commit/b76fc757cb5685eb44395342e5001c15e0eb9309))
+
+## [0.1.7](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.6...v0.1.7) (2026-04-04)
+
+
+### Bug Fixes
+
+* add only status=open to ai rebalancing proposals repo ([4089c55](https://github.com/Megidy/BestLviv2026Test/commit/4089c553e7205aeaf5663faa867cee1f66ed49c0))
+* add only status=open to ai rebalancing proposals repo ([958eef6](https://github.com/Megidy/BestLviv2026Test/commit/958eef6cccdb631b344fae6187ade590ae16719c))
+
 ## [0.1.6](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.5...v0.1.6) (2026-04-04)
 
 
