@@ -750,21 +750,6 @@ class _TerminalExperienceState extends State<TerminalExperience> {
     }
   }
 
-  void _openRebalancingProposals() {
-    if (!_canUseRebalancing) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Rebalancing proposals are available only for dispatcher accounts.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    _goTo(AppScreen.rebalancingProposals);
-  }
-
   Future<void> _openProposalFromAlert(PredictiveAlert alert) async {
     if (!_canUseRebalancing) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1423,19 +1408,18 @@ class _TerminalExperienceState extends State<TerminalExperience> {
                   onBack: () => _goTo(AppScreen.home),
                 ),
               AppScreen.home => HomeScreen(
-                  actorRole: _userProfile!.role,
                   queue: _queue,
                   navIndex: _navIndex,
                   locationLabel: _userProfile!.locationLabel,
                   locationTitle: locationTitle,
                   accountLabel: _userProfile!.initials,
+                  alertCount: _predictiveAlerts.length,
                   activeCount: inventoryOverview.items.length,
                   pendingCount: _predictiveAlerts.length,
                   criticalCount: criticalCount,
                   onQuickScan: () => _goTo(AppScreen.scanner),
                   onRequestsTap: () => _openDeliveryRequests(),
                   onDemandReadingsTap: () => _openDemandReadings(),
-                  onRebalancingTap: () => _openRebalancingProposals(),
                   onStockNearestTap: () => _openStockNearest(),
                   onAlertsTap: () => _goTo(AppScreen.alerts),
                   onAccountTap: () => _goTo(AppScreen.settings),
