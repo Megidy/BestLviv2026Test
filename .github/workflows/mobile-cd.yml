@@ -1,6 +1,7 @@
 name: Mobile CD
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
 
