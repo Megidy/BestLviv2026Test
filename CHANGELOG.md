@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.12](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.11...v0.1.12) (2026-04-05)
+
+
+### Features
+
+* enhance map functionality with focus point handling and predictive alert integration ([8cee071](https://github.com/Megidy/BestLviv2026Test/commit/8cee0719a5481d206755da3aeb5f6350468789d7))
+* implement offline mutation queue and connectivity handling ([205dbdc](https://github.com/Megidy/BestLviv2026Test/commit/205dbdc1419a573a098a72b43b026a72fca935d6))
+* implement offline mutation queue and connectivity handling ([c4cb18c](https://github.com/Megidy/BestLviv2026Test/commit/c4cb18ca68b71719f7a27e8bb36a9a50f31cfaec))
+
 ## [1.0.0](https://github.com/Megidy/BestLviv2026Test/compare/v0.1.11...v1.0.0) (2026-04-05)
 
 * **Stable release**
