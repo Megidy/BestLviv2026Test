@@ -1,5 +1,6 @@
-export const API_BASE_URL = 'https://api.logisync.systems';
-  
+export const API_BASE_URL =
+  'https://api.logisync.systems';
+
 export const endpoints = {
   auth: {
     login: '/v1/auth/login',
