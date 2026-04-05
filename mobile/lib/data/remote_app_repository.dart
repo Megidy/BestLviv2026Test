@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../models.dart';
 import 'api_exception.dart';
 import 'app_api_client.dart';
@@ -11,6 +13,20 @@ class RemoteAppRepository implements AppRepository {
   }) : _apiClient = apiClient ?? AppApiClient();
 
   final AppApiClient _apiClient;
+
+  @override
+  ValueListenable<bool> get isOnlineListenable => _apiClient.isOnlineListenable;
+
+    @override
+    ValueListenable<int> get pendingMutationCountListenable =>
+      _apiClient.pendingMutationCountListenable;
+
+    @override
+    ValueListenable<bool> get isSyncingQueueListenable =>
+      _apiClient.isSyncingQueueListenable;
+
+    @override
+    Future<int> processPendingMutations() => _apiClient.processPendingMutations();
 
   @override
   Future<UserProfile?> tryRestoreSession() async {

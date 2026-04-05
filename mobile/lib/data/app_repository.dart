@@ -1,7 +1,15 @@
+import 'package:flutter/foundation.dart';
+
 import '../models.dart';
 
 abstract class AppRepository {
   const AppRepository();
+
+  ValueListenable<bool> get isOnlineListenable;
+  ValueListenable<int> get pendingMutationCountListenable;
+  ValueListenable<bool> get isSyncingQueueListenable;
+
+  Future<int> processPendingMutations();
 
   Future<UserProfile?> tryRestoreSession();
   Future<UserProfile> login({

@@ -5,6 +5,7 @@ enum ApiErrorType {
   server,
   timeout,
   network,
+  queued,
   unknown,
 }
 
@@ -26,6 +27,7 @@ class ApiException implements Exception {
   bool get isServerError => errorType == ApiErrorType.server;
   bool get isTimeout => errorType == ApiErrorType.timeout;
   bool get isNetworkError => errorType == ApiErrorType.network;
+  bool get isQueued => errorType == ApiErrorType.queued;
 
   @override
   String toString() => message;

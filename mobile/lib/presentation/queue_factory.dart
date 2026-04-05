@@ -6,6 +6,7 @@ import '../theme.dart';
 List<QueueItem> buildQueueFromInventory({
   required InventoryOverview inventoryOverview,
   required List<PredictiveAlert> predictiveAlerts,
+  required bool isOnline,
 }) {
   final alertByResource = <String, PredictiveAlert>{
     for (final alert in predictiveAlerts) alert.resourceName: alert,
@@ -25,7 +26,7 @@ List<QueueItem> buildQueueFromInventory({
     return QueueItem(
       name: item.resourceName,
       code: 'ID-${item.id} - ${item.quantityLabel}',
-      age: alert?.updatedLabel ?? 'Live sync',
+      age: alert?.updatedLabel ?? (isOnline ? 'Live sync' : 'Offline cache'),
       status: item.healthLabel.toLowerCase(),
       accent: accent,
       icon: _iconForCategory(item.category),
