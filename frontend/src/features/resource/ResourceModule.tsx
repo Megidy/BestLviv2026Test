@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useNetwork } from '@/shared/hooks/useNetwork';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
 import { useMap } from '@/features/map/hooks/useMap';
 import { useNearestStock } from '@/features/map/useNearestStock';
@@ -27,6 +28,7 @@ import { ResourcePanel } from '@/widgets/ResourcePanel';
 export function ResourceModule() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { isOnline } = useNetwork();
   const resourceId = Number(id);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | undefined>();
   const [requestQuantity, setRequestQuantity] = useState(100);
@@ -224,7 +226,8 @@ export function ResourceModule() {
 
               <div className="flex flex-wrap gap-3">
                 <Button
-                  disabled={isMutating || !selectedCustomerId || requestQuantity <= 0}
+                  disabled={isMutating || !isOnline || !selectedCustomerId || requestQuantity <= 0}
+                  title={!isOnline ? 'Not available offline' : undefined}
                   onClick={async () => {
                     if (requestPriority === 'urgent' && !arriveTill) {
                       return;
@@ -251,7 +254,8 @@ export function ResourceModule() {
                 {user?.role === 'dispatcher' || user?.role === 'admin' ? (
                   <Button
                     variant="outline"
-                    disabled={isMutating}
+                    disabled={isMutating || !isOnline}
+                    title={!isOnline ? 'Not available offline' : undefined}
                     onClick={() => void allocatePending()}
                   >
                     Run allocation queue
@@ -317,7 +321,8 @@ export function ResourceModule() {
                   />
                 </div>
                 <Button
-                  disabled={isMutating || !selectedCustomerId || demandQuantity <= 0}
+                  disabled={isMutating || !isOnline || !selectedCustomerId || demandQuantity <= 0}
+                  title={!isOnline ? 'Not available offline' : undefined}
                   onClick={() =>
                     void recordDemand({
                       point_id: selectedCustomerId!,
@@ -458,7 +463,8 @@ export function ResourceModule() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={isMutating || editValue <= 0}
+                                disabled={isMutating || !isOnline || editValue <= 0}
+                                title={!isOnline ? 'Not available offline' : undefined}
                                 onClick={() =>
                                   void updateQuantity(
                                     requestItem.id,
@@ -472,7 +478,8 @@ export function ResourceModule() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                disabled={isMutating}
+                                disabled={isMutating || !isOnline}
+                                title={!isOnline ? 'Not available offline' : undefined}
                                 onClick={() => void escalate(requestItem.id)}
                               >
                                 Escalate
@@ -484,7 +491,8 @@ export function ResourceModule() {
                         {requestItem.status === 'in_transit' ? (
                           <Button
                             size="sm"
-                            disabled={isMutating}
+                            disabled={isMutating || !isOnline}
+                            title={!isOnline ? 'Not available offline' : undefined}
                             onClick={() => void deliver(requestItem.id)}
                           >
                             Confirm delivery
@@ -520,7 +528,8 @@ export function ResourceModule() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    disabled={isMutating}
+                                    disabled={isMutating || !isOnline}
+                                    title={!isOnline ? 'Not available offline' : undefined}
                                     onClick={() =>
                                       void approveAllocation(allocation.id)
                                     }
@@ -532,7 +541,8 @@ export function ResourceModule() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    disabled={isMutating}
+                                    disabled={isMutating || !isOnline}
+                                    title={!isOnline ? 'Not available offline' : undefined}
                                     onClick={() =>
                                       void dispatchAllocation(allocation.id)
                                     }

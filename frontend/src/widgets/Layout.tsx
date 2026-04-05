@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 
 import { Sidebar } from '@/widgets/Sidebar';
 import { Topbar } from '@/widgets/Topbar';
+import { OfflineToast } from '@/shared/ui/OfflineToast';
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -20,6 +21,7 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      <OfflineToast />
     </div>
   );
 }
